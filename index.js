@@ -126,18 +126,23 @@ app.get('/rooms', async (req, res) => {
   res.json(db.data.rooms);
 });
 
-// ルーム作成（★members を追加）
+// ルームID生成関数（6桁ランダム数字）
+function generateRoomId() {
+  return Math.floor(100000 + Math.random() * 900000); // 100000〜999999
+}
+
+// ルーム作成API
 app.post('/rooms', async (req, res) => {
   const { name, creator } = req.body;
   await db.read();
 
   const room = {
-    id: Date.now(),
+    id: generateRoomId(),   // ←ここを6桁数字に変更
     name,
     creator,
     created_at: new Date().toISOString(),
     messages: [],
-    members: [creator]   // ★追加
+    members: [creator]
   };
 
   db.data.rooms.push(room);
@@ -145,6 +150,7 @@ app.post('/rooms', async (req, res) => {
 
   res.json({ success: true, room });
 });
+
 
 // -------------------- ★ ルーム参加API（追加） --------------------
 app.post('/rooms/:id/join', async (req, res) => {
