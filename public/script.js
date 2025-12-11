@@ -202,3 +202,17 @@ socket.on('message', (data) => {
   if (String(data.roomId) !== String(window.currentRoomId)) return;
   appendMessage(data.author, data.text, data.time);
 });
+
+
+// ---------- 戻る ----------
+window.addEventListener('DOMContentLoaded', () => {
+  const backBtn = document.getElementById('backBtn');
+  if (!backBtn) return;
+
+  backBtn.onclick = () => {
+    document.getElementById('chatScreen').style.display = 'none';
+    document.getElementById('homeScreen').style.display = 'block';
+    window.currentRoomId = null;
+    document.getElementById('chatArea').innerHTML = '';
+  };
+});
