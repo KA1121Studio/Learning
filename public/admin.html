@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>管理画面</title>
+  <style>
+    body {
+      font-family: "Segoe UI", sans-serif;
+      background: #f5f5f5;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 {
+      margin-bottom: 20px;
+      font-size: 22px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+    }
+    th, td {
+      padding: 12px;
+      border-bottom: 1px solid #ddd;
+      font-size: 14px;
+    }
+    th {
+      background: #eee;
+      text-align: left;
+    }
+    button {
+      padding: 6px 12px;
+      border: none;
+      cursor: pointer;
+      border-radius: 5px;
+      background: #ff4b4b;
+      color: white;
+      font-size: 13px;
+    }
+    button:hover {
+      background: #ff2f2f;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>管理画面（ルーム一覧）</h1>
+
+  <table id="roomTable">
+    <tr>
+      <th>ID</th>
+      <th>ルーム名</th>
+      <th>作成者</th>
+      <th>作成日時</th>
+      <th>削除</th>
+    </tr>
+  </table>
+
+  <script>
+    async function loadRooms() {
+      const res = await fetch('/rooms');
+      const rooms = await res.json();
+
+      const table = document.getElementById('roomTable');
+
+      rooms.forEach(room => {
+        const tr = document.createElement('tr');
+
+        tr.innerHTML = `
+          <td>${room.id}</td>
+          <td>${room.name}</td>
+          <td>${room.creator || "-"}</td>
+          <td>${new Date(room.created_at).toLocaleString()}</td>
+          <td><button onclick="deleteRoom(${room.id})">削除</button></td>
+        `;
+
+        table.appendChild(tr);
+      });
+    }
+
+    async function deleteRoom(id) {
+      if (!confirm("本当に削除しますか？")) return;
+
+      const res = await fetch('/rooms/' + id, {
+        method: 'DELETE'
+      });
+
+      if (res.ok) {
+        alert("削除しました");
+        location.reload();
+      } else {
+        alert("削除に失敗しました");
+      }
+    }
+
+    loadRooms();
+  </script>
+
+</body>
+</html>
