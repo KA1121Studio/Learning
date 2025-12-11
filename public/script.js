@@ -99,6 +99,14 @@ document.getElementById('btnJoinRoom').onclick = async () => {
 
 // ---------- ルームを開く（ホーム -> チャット） ----------
 async function openRoom(roomId) {
+
+  // 👇 ここに追加（ユーザー名を送る）
+  await fetch('/rooms/' + roomId + '/join', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ user: localStorage.getItem('userName') })
+  });
+
   // ルーム取得
   const res = await fetch('/rooms');
   const rooms = await res.json();
@@ -120,14 +128,6 @@ async function openRoom(roomId) {
   // チャット読み込み（過去ログ）
   await loadChat(room.id);
 }
-
-// 戻る
-document.getElementById('backBtn').onclick = () => {
-  document.getElementById('chatScreen').style.display = 'none';
-  document.getElementById('homeScreen').style.display = 'block';
-  window.currentRoomId = null;
-  document.getElementById('chatArea').innerHTML = '';
-};
 
 // ---------- チャット読み込み（REST で過去メッセージ取得） ----------
 async function loadChat(roomId) {
