@@ -193,6 +193,22 @@ app.post('/rooms/:roomId/messages', async (req, res) => {
   res.json({success:true});
 });
 
+// -------- ルーム削除（管理用） --------
+app.delete('/rooms/:id', async (req, res) => {
+  const id = Number(req.params.id);
+
+  const idx = db.data.rooms.findIndex(r => r.id === id);
+  if (idx === -1) {
+    return res.status(404).json({ error: "not found" });
+  }
+
+  db.data.rooms.splice(idx, 1);
+
+  await db.write();
+  res.json({ ok: true });
+});
+
+
 // -------------------- 投稿・コメント管理（adminのみ） --------------------
 app.get('/kanri/data', async (req,res)=>{
   const { userId } = req.query;
