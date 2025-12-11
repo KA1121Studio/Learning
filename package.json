@@ -1,0 +1,16 @@
+
+{
+  "name": "learning-board",
+  "version": "1.0.0",
+  "description": "がくしゅう",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "lowdb": "^6.0.1",
+    "body-parser": "^1.20.2",
+    "socket.io": "^4.7.1"
+  }
+}
