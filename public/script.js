@@ -39,13 +39,19 @@ document.getElementById('settingsBtn').onclick = () => {
 };
 
 // ---------- ルーム読み込み ----------
+// ---------- ルーム読み込み ----------
 async function loadRooms() {
   const res = await fetch('/rooms');
   const rooms = await res.json();
   const ul = document.getElementById('roomList');
   ul.innerHTML = '';
 
-  rooms.forEach(r => {
+  // ★ 追加（ユーザーの部屋だけ抽出）
+  const user = localStorage.getItem('userName');
+  const myRooms = rooms.filter(r => r.members?.includes(user));
+
+  // ★ 元の rooms.forEach → myRooms.forEach に変更
+  myRooms.forEach(r => {
     const li = document.createElement('li');
     const left = document.createElement('div');
     left.textContent = r.name + ' (' + r.id + ')';
