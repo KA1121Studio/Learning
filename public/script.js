@@ -48,7 +48,8 @@ async function loadRooms() {
   rooms.forEach(r => {
     const li = document.createElement('li');
     const left = document.createElement('div');
-    left.textContent = r.name;
+    left.textContent = r.name + ' (' + r.id + ')';
+
     const right = document.createElement('div');
     right.style.fontSize = '12px';
     right.style.color = '#666';
