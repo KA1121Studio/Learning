@@ -58,14 +58,7 @@ app.post('/posts/:postId/comments', async (req,res)=>{
   await db.write();
   res.json({ success:true });
 });
-// -------- 管理画面（パスワード保護） --------
-app.get('/admin', (req, res) => {
-  const pass = req.query.pass;
-  if (pass !== 'kazuma1121') {
-    return res.status(401).send('認証エラー: パスワードが違うよ');
-  }
-  res.sendFile(__dirname + '/public/admin.html');
-});
+
 
 // -------------------- 管理者ログイン・ユーザー管理 --------------------
 
@@ -235,6 +228,15 @@ app.post('/kanri/delete-comment/:postId/:commentId', async (req,res)=>{
     await db.write();
   }
   res.send('ok');
+});
+
+// -------- 管理画面（パスワード保護） --------
+app.get('/admin', (req, res) => {
+  const pass = req.query.pass;
+  if (pass !== 'kazuma1121') {
+    return res.status(401).send('認証エラー: パスワードが違うよ');
+  }
+  res.sendFile(__dirname + '/public/admin.html');
 });
 
 // -------------------- 管理画面 HTML --------------------
