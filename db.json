@@ -1,0 +1,22 @@
+ 
+{
+  "posts": [
+    {
+      "id": 1,
+      "title": "Node.jsでサーバー作りたい",
+      "author": "生徒",
+      "content": "サンプルコードを知りたいです。",
+      "category": "プログラミング",
+      "comments": [
+        { "id": 101, "author": "先生", "content": "ここにコード例があります。" }
+      ],
+      "likes": 3,
+      "solved": false,
+      "created_at": "2025-09-24T10:00:00Z"
+    }
+  ],
+  "users": [
+    { "id": 1, "username": "admin", "password": "admin123", "role": "admin" }
+  ],
+  "rooms": []
+}
