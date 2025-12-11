@@ -9,7 +9,8 @@ const port = process.env.PORT || 3000;
 
 // lowdb セットアップ
 const adapter = new JSONFile('db.json');
-const db = new Low(adapter);
+const db = new Low(adapter, { posts: [], users: [] });  // ← この2つ目の引数を追加
+
 
 async function initDB(){
   await db.read();
