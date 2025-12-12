@@ -163,11 +163,40 @@ function generateRoomId() {
 }
 
 // ★ Supabase 版：ルーム一覧
+// ★ Supabase 版：ルーム一覧（JOINしてユーザー毎にフィルタ）
 app.get('/rooms', async (req, res) => {
-  const { data, error } = await supabase.from('rooms').select('*');
-  if (error) return res.status(500).json({ error });
-  res.json(data);
+  const user = req.query.user;
+
+  if (!user) {
+    return res.status(400).json({ error: "user が必要" });
+  }
+
+  // 1. 自分が参加している room_id を取得
+  const { data: memberRows, error: mErr } = await supabase
+    .from('members')
+    .select('room_id')
+    .eq('user', user);
+
+  if (mErr) return res.status(500).json({ error: mErr });
+
+  const roomIds = memberRows.map(r => r.room_id);
+
+  if (roomIds.length === 0) {
+    return res.json([]); // 参加ルームなし
+  }
+
+  // 2. rooms テーブルからその room_id のルームを取得
+  const { data: rooms, error: rErr } = await supabase
+    .from('rooms')
+    .select('*')
+    .in('id', roomIds)
+    .order('created_at', { ascending: true });
+
+  if (rErr) return res.status(500).json({ error: rErr });
+
+  res.json(rooms);
 });
+
 
 // ★ Supabase 版：ルーム作成
 app.post('/rooms', async (req, res) => {
