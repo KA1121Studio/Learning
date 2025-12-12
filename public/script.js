@@ -49,9 +49,8 @@ async function loadRooms() {
 
 
   // ★ 追加（ユーザーの部屋だけ抽出）
-  const user = localStorage.getItem('userName');
-  const myRooms = rooms.filter(r => r.members?.includes(user));
-
+  myRooms.forEach(r => {
+    
   // ★ 元の rooms.forEach → myRooms.forEach に変更
   myRooms.forEach(r => {
     const li = document.createElement('li');
