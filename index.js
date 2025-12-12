@@ -281,4 +281,3 @@ io.on("connection", (socket) => {
 
 // -------------------- サーバー起動 --------------------
 http.listen(port, ()=>console.log(`学習掲示板（リアルタイム）動作中: ${port}`));
-
