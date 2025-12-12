@@ -161,12 +161,31 @@ function generateRoomId() {
   return Math.floor(100000 + Math.random() * 900000);
 }
 
-// ★ Supabase 版：ルーム一覧
+// ★ Supabase 版：ルーム一覧（members を結合して返す）
 app.get('/rooms', async (req, res) => {
-  const { data, error } = await supabase.from('rooms').select('*');
-  if (error) return res.status(500).json({ error });
-  res.json(data);
+  const { data: rooms, error: roomError } = await supabase
+    .from('rooms')
+    .select('*');
+
+  if (roomError) return res.status(500).json({ error: roomError });
+
+  const { data: members, error: memberError } = await supabase
+    .from('members')
+    .select('*');
+
+  if (memberError) return res.status(500).json({ error: memberError });
+
+  // ルームごとに members 配列を付与
+  const result = rooms.map(r => ({
+    ...r,
+    members: members
+      .filter(m => m.room_id === r.id)
+      .map(m => m.user)
+  }));
+
+  res.json(result);
 });
+
 
 // ★ Supabase 版：ルーム作成
 app.post('/rooms', async (req, res) => {
