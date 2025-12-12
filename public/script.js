@@ -41,10 +41,12 @@ document.getElementById('settingsBtn').onclick = () => {
 // ---------- ルーム読み込み ----------
 // ---------- ルーム読み込み ----------
 async function loadRooms() {
-  const res = await fetch('/rooms');
+  const user = localStorage.getItem('userName');
+  const res = await fetch('/rooms?user=' + encodeURIComponent(user));
   const rooms = await res.json();
   const ul = document.getElementById('roomList');
   ul.innerHTML = '';
+
 
   // ★ 追加（ユーザーの部屋だけ抽出）
   const user = localStorage.getItem('userName');
