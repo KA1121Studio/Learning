@@ -57,15 +57,43 @@ app.post('/posts', async (req,res)=>{
   res.json({ success:true });
 });
 
-app.post('/posts/:postId/comments', async (req,res)=>{
+app.post('/posts/:postId/comments', async (req, res) => {
   const postId = Number(req.params.postId);
   const { author, content } = req.body;
-  await db.read();
-  const post = db.data.posts.find(p=>p.id===postId);
-  if(!post) return res.status(404).json({ error:'投稿が見つかりません' });
-  post.comments.push({ id: Date.now(), author, content });
-  await db.write();
-  res.json({ success:true });
+
+  // 1. 投稿取得
+  const { data: post, error: selectError } = await supabase
+    .from('posts')
+    .select('comments')
+    .eq('id', postId)
+    .single();
+
+  if (selectError || !post) {
+    console.error(selectError);
+    return res.status(404).json({ error: '投稿が見つからない' });
+  }
+
+  // 2. コメント追加
+  const newComment = {
+    id: Date.now(),
+    author,
+    content
+  };
+
+  const updatedComments = [...(post.comments || []), newComment];
+
+  // 3. UPDATE
+  const { error: updateError } = await supabase
+    .from('posts')
+    .update({ comments: updatedComments })
+    .eq('id', postId);
+
+  if (updateError) {
+    console.error(updateError);
+    return res.status(500).json({ error: 'コメント保存でエラー' });
+  }
+
+  res.json({ success: true });
 });
 
 
