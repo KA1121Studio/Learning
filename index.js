@@ -1,3 +1,4 @@
+
 // ------------------------------------
 // 必要な追加 (Supabase)
 // ------------------------------------
@@ -160,27 +161,13 @@ function generateRoomId() {
   return Math.floor(100000 + Math.random() * 900000);
 }
 
-// ★ Supabase 版：ルーム一覧＋ members を結合して返す
+// ★ Supabase 版：ルーム一覧
 app.get('/rooms', async (req, res) => {
-  const { data: rooms, error: roomsError } =
-    await supabase.from('rooms').select('*');
-
-  if (roomsError) return res.status(500).json({ error: roomsError });
-
-  const { data: members, error: membersError } =
-    await supabase.from('members').select('*');
-
-  if (membersError) return res.status(500).json({ error: membersError });
-
-  const result = rooms.map(r => ({
-    ...r,
-    members: members
-      .filter(m => m.room_id === r.id)
-      .map(m => m.user)
-  }));
-
-  res.json(result);
+  const { data, error } = await supabase.from('rooms').select('*');
+  if (error) return res.status(500).json({ error });
+  res.json(data);
 });
+
 // ★ Supabase 版：ルーム作成
 app.post('/rooms', async (req, res) => {
   const { name, creator } = req.body;
