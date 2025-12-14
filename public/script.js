@@ -216,7 +216,7 @@ document.getElementById('chatInput').addEventListener('keydown', (e) => {
 // ---------- Socket.io 受信 ----------
 socket.on('message', (data) => {
   if (!window.currentRoomId) return;
-  if (String(data.roomId) !== String(window.currentRoomId)) return;
+  if (String(data.room_id) !== String(window.currentRoomId)) return;
   appendMessage(data.author, data.text, data.time);
 });
 
