@@ -18,7 +18,6 @@ window.addEventListener('load', () => {
     document.getElementById('userNameDisplay').textContent = user;
   }
 
-  // ルーム読み込み
   loadRooms();
 });
 
@@ -38,21 +37,14 @@ document.getElementById('settingsBtn').onclick = () => {
   document.getElementById('userNameDisplay').textContent = newName;
 };
 
-// ---------- ルーム読み込み ----------
+// ---------- ルーム読み込み（全部表示版） ----------
 async function loadRooms() {
   const res = await fetch('/rooms');
   const rooms = await res.json();
   const ul = document.getElementById('roomList');
   ul.innerHTML = '';
 
-  const user = localStorage.getItem('userName');
-
-  // ★ 修正ポイント：順番を正しく
-  const myRooms = rooms.filter(r =>
-    r.members?.includes(user)
-  );
-
-  myRooms.forEach(r => {
+  rooms.forEach(r => {
     const li = document.createElement('li');
 
     const left = document.createElement('div');
@@ -107,9 +99,8 @@ document.getElementById('btnJoinRoom').onclick = async () => {
   openRoom(room.id);
 };
 
-// ---------- ルームを開く（ホーム -> チャット） ----------
+// ---------- ルームを開く ----------
 async function openRoom(roomId) {
-
   await fetch('/rooms/' + roomId + '/join', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -129,9 +120,7 @@ async function openRoom(roomId) {
     '作成者: ' + (room.creator || '-');
 
   window.currentRoomId = String(room.id);
-
   socket.emit('joinRoom', String(room.id));
-
   await loadChat(room.id);
 }
 
@@ -141,12 +130,11 @@ async function loadChat(roomId) {
   const messages = await res.json();
   const chatArea = document.getElementById('chatArea');
   chatArea.innerHTML = '';
-
   messages.forEach(m => appendMessage(m.author, m.text, m.time));
   chatArea.scrollTop = chatArea.scrollHeight;
 }
 
-// ---------- メッセージ追加 ----------
+// ---------- メッセージ表示 ----------
 function appendMessage(author, text, time) {
   const chatArea = document.getElementById('chatArea');
   const wrapper = document.createElement('div');
