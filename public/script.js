@@ -1,3 +1,4 @@
+
 // public/script.js
 // クライアントサイド全機能（ルーム一覧 / 作成・参加 / 名前管理 / ワンページチャット / Socket.io）
 const socket = io();
@@ -8,6 +9,16 @@ window.currentRoomId = null;
 // ---------- UI 初期化 ----------
 function showPopup() { document.getElementById('popup').style.display = 'flex'; }
 function closePopup() { document.getElementById('popup').style.display = 'none'; }
+
+// ---------- 参加ルーム保存 ----------
+function saveJoinedRoom(roomId) {
+  const key = 'joinedRooms';
+  const rooms = JSON.parse(localStorage.getItem(key) || '[]');
+  if (!rooms.includes(String(roomId))) {
+    rooms.push(String(roomId));
+    localStorage.setItem(key, JSON.stringify(rooms));
+  }
+}
 
 // ---------- 名前管理 ----------
 window.addEventListener('load', () => {
@@ -37,30 +48,35 @@ document.getElementById('settingsBtn').onclick = () => {
   document.getElementById('userNameDisplay').textContent = newName;
 };
 
-// ---------- ルーム読み込み（全部表示版） ----------
+// ---------- ルーム読み込み（参加済みのみ表示） ----------
 async function loadRooms() {
   const res = await fetch('/rooms');
   const rooms = await res.json();
+
+  const joined = JSON.parse(localStorage.getItem('joinedRooms') || '[]');
+
   const ul = document.getElementById('roomList');
   ul.innerHTML = '';
 
-  rooms.forEach(r => {
-    const li = document.createElement('li');
+  rooms
+    .filter(r => joined.includes(String(r.id)))
+    .forEach(r => {
+      const li = document.createElement('li');
 
-    const left = document.createElement('div');
-    left.textContent = r.name + ' (' + r.id + ')';
+      const left = document.createElement('div');
+      left.textContent = r.name + ' (' + r.id + ')';
 
-    const right = document.createElement('div');
-    right.style.fontSize = '12px';
-    right.style.color = '#666';
-    right.textContent = new Date(r.created_at).toLocaleString();
+      const right = document.createElement('div');
+      right.style.fontSize = '12px';
+      right.style.color = '#666';
+      right.textContent = new Date(r.created_at).toLocaleString();
 
-    li.appendChild(left);
-    li.appendChild(right);
+      li.appendChild(left);
+      li.appendChild(right);
 
-    li.onclick = () => openRoom(r.id);
-    ul.appendChild(li);
-  });
+      li.onclick = () => openRoom(r.id);
+      ul.appendChild(li);
+    });
 }
 
 // ---------- プラスボタンとメニュー ----------
@@ -72,17 +88,22 @@ document.getElementById('btnCreateRoom').onclick = async () => {
   const name = prompt('ルーム名を入力してください');
   if (!name) return;
   const creator = localStorage.getItem('userName') || '名無し';
+
   const res = await fetch('/rooms', {
     method: 'POST',
     headers: {'Content-Type':'application/json'},
     body: JSON.stringify({ name, creator })
   });
+
   const data = await res.json();
   if (data && data.room) {
+    saveJoinedRoom(data.room.id);
+
     document.getElementById('roomCodeDisplay').style.display = 'block';
     document.getElementById('roomCodeDisplay').innerHTML =
       'ルームコード: <strong>' + data.room.id + '</strong>';
   }
+
   closePopup();
   loadRooms();
 };
@@ -91,16 +112,21 @@ document.getElementById('btnCreateRoom').onclick = async () => {
 document.getElementById('btnJoinRoom').onclick = async () => {
   const code = prompt('ルームコードを入力してください');
   if (!code) return;
+
   const res = await fetch('/rooms');
   const rooms = await res.json();
   const room = rooms.find(r => String(r.id) === String(code));
   if (!room) return alert('ルームが見つかりません');
+
+  saveJoinedRoom(room.id);
   closePopup();
   openRoom(room.id);
 };
 
 // ---------- ルームを開く ----------
 async function openRoom(roomId) {
+  saveJoinedRoom(roomId);
+
   await fetch('/rooms/' + roomId + '/join', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -171,6 +197,7 @@ document.getElementById('sendBtn').onclick = () => {
   const textInput = document.getElementById('chatInput');
   const text = textInput.value.trim();
   if (!text) return;
+
   const author = localStorage.getItem('userName') || '名無し';
   const roomId = window.currentRoomId;
   if (!roomId) return alert('ルームが選択されていない');
@@ -205,4 +232,3 @@ window.addEventListener('DOMContentLoaded', () => {
     document.getElementById('chatArea').innerHTML = '';
   };
 });
-
