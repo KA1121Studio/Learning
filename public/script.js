@@ -37,10 +37,14 @@ document.getElementById('settingsBtn').onclick = () => {
   document.getElementById('userNameDisplay').textContent = newName;
 };
 
-// ---------- ルーム読み込み（全部表示版） ----------
+// ---------- ルーム読み込み（自分の部屋だけ） ----------
 async function loadRooms() {
-  const res = await fetch('/rooms');
+  const user = localStorage.getItem('userName');
+  if (!user) return;
+
+  const res = await fetch('/my-rooms?user=' + encodeURIComponent(user));
   const rooms = await res.json();
+
   const ul = document.getElementById('roomList');
   ul.innerHTML = '';
 
@@ -62,6 +66,7 @@ async function loadRooms() {
     ul.appendChild(li);
   });
 }
+
 
 // ---------- プラスボタンとメニュー ----------
 document.getElementById('addRoomBtn').onclick = showPopup;
