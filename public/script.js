@@ -161,7 +161,7 @@ function appendMessage(author, text, time, image) {
   const isMe = author === name;
 
   const bubble = document.createElement('div');
-  bubble.className = 'bubble ' + (isMe ? 'right' : 'left'));
+  bubble.className = 'bubble ' + (isMe ? 'right' : 'left');
   bubble.innerHTML = `
     <div style="font-size:12px; color:#444;">${author}</div>
     ${text ? `<div>${escapeHtml(text)}</div>` : ''}
