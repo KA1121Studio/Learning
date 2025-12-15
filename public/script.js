@@ -79,7 +79,7 @@ async function loadRooms() {
 document.getElementById('addRoomBtn').onclick = showPopup;
 document.getElementById('closePopupBtn').onclick = closePopup;
 
-// ルーム作成
+// ---------- ルーム作成 ----------
 document.getElementById('btnCreateRoom').onclick = async () => {
   const name = prompt('ルーム名を入力してください');
   if (!name) return;
@@ -103,7 +103,7 @@ document.getElementById('btnCreateRoom').onclick = async () => {
   loadRooms();
 };
 
-// ルーム参加
+// ---------- ルーム参加 ----------
 document.getElementById('btnJoinRoom').onclick = async () => {
   const code = prompt('ルームコードを入力してください');
   if (!code) return;
@@ -179,7 +179,7 @@ function appendMessage(author, text, time, image) {
   chatArea.scrollTop = chatArea.scrollHeight;
 }
 
-// 簡易エスケープ
+// ---------- 簡易エスケープ ----------
 function escapeHtml(s) {
   if (!s) return '';
   return s.replace(/&/g,'&amp;')
@@ -225,15 +225,25 @@ socket.on('message', (data) => {
   appendMessage(data.author, data.text, data.time, data.image);
 });
 
-// ---------- 戻る ----------
+// ---------- DOM 完成後 ----------
 window.addEventListener('DOMContentLoaded', () => {
   const backBtn = document.getElementById('backBtn');
-  if (!backBtn) return;
+  if (backBtn) {
+    backBtn.onclick = () => {
+      document.getElementById('chatScreen').style.display = 'none';
+      document.getElementById('homeScreen').style.display = 'block';
+      window.currentRoomId = null;
+      document.getElementById('chatArea').innerHTML = '';
+    };
+  }
 
-  backBtn.onclick = () => {
-    document.getElementById('chatScreen').style.display = 'none';
-    document.getElementById('homeScreen').style.display = 'block';
-    window.currentRoomId = null;
-    document.getElementById('chatArea').innerHTML = '';
-  };
+  const addMediaBtn = document.getElementById('addMediaBtn');
+  if (addMediaBtn) {
+    addMediaBtn.onclick = () => {
+      const url = prompt('画像URLを入力');
+      if (!url) return;
+      selectedImageUrl = url;
+      alert('画像をセットしました');
+    };
+  }
 });
