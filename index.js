@@ -66,6 +66,7 @@ app.post('/posts/:postId/comments', async (req, res) => {
     .single();
 
   if (selectError || !post) {
+    console.error(selectError);
     return res.status(404).json({ error: '投稿が見つからない' });
   }
 
@@ -83,6 +84,7 @@ app.post('/posts/:postId/comments', async (req, res) => {
     .eq('id', postId);
 
   if (updateError) {
+    console.error(updateError);
     return res.status(500).json({ error: 'コメント保存でエラー' });
   }
 
@@ -148,7 +150,7 @@ app.post('/kanri/update-role/:targetId', async (req,res)=>{
 });
 
 
-// -------------------- ルームAPI（Supabase） --------------------
+// -------------------- ルームAPI：ここから Supabase 化 --------------------
 function generateRoomId() {
   return Math.floor(100000 + Math.random() * 900000);
 }
@@ -198,6 +200,7 @@ app.get('/rooms/:roomId/messages', async (req, res) => {
   res.json(data);
 });
 
+// ★ image(URL) を保存するように拡張
 app.post('/rooms/:roomId/messages', async (req, res) => {
   const roomId = Number(req.params.roomId);
 
@@ -206,7 +209,7 @@ app.post('/rooms/:roomId/messages', async (req, res) => {
     room_id: roomId,
     author: req.body.author,
     text: req.body.text,
-    image_url: req.body.image_url || null,
+    image: req.body.image || null, // ← 追加
     time: new Date().toISOString()
   };
 
@@ -229,6 +232,13 @@ app.delete('/rooms/:id', async (req, res) => {
 });
 
 
+// -------------------- 管理画面 HTML --------------------
+app.get('/kanri', (req,res)=>{
+  const html = `...（省略）...`;
+  res.send(html);
+});
+
+
 // -------------------- Socket.io --------------------
 const http = require('http').createServer(app);
 const { Server } = require('socket.io');
@@ -239,22 +249,20 @@ io.on("connection", (socket) => {
     socket.join(String(roomId));
   });
 
+  // ★ image(URL) 対応
   socket.on("message", async (data) => {
-    const rid = Number(data.roomId);
-
     const msg = {
       id: Date.now(),
-      room_id: rid,
+      room_id: Number(data.roomId),
       author: data.author,
       text: data.text,
-      image_url: data.image_url || null,
+      image: data.image || null, // ← 追加
       time: new Date().toISOString()
     };
 
     await supabase.from('messages').insert(msg);
 
-    io.to(String(data.roomId))
-      .emit("message", msg);
+    io.to(String(data.roomId)).emit("message", msg);
   });
 });
 
