@@ -94,6 +94,35 @@
     </div>
   </div>
 
+  <div id="mediaPopup" style="
+  display:none;
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.4);
+  justify-content:center;
+  align-items:center;
+">
+  <div class="popupBox">
+    <h3>メディアを追加</h3>
+
+    <input
+      id="imageUrlInput"
+      type="text"
+      placeholder="画像URL"
+      style="width:100%; padding:8px; margin-bottom:8px;"
+    >
+
+    <input id="imageFileInput" type="file" accept="image/*">
+
+    <div id="imagePreview" style="margin-top:10px;"></div>
+
+    <div style="margin-top:12px; display:flex; gap:8px; justify-content:center;">
+      <button id="mediaCloseBtn" class="small">閉じる</button>
+    </div>
+  </div>
+</div>
+
+  
   <script src="/socket.io/socket.io.js"></script>
   <script src="script.js"></script>
 </body>
