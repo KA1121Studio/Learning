@@ -259,27 +259,23 @@ io.on("connection", (socket) => {
     socket.join(String(roomId));
   });
 
-socket.on("message", async (data) => {
-  const rid = Number(data.roomId);
+  socket.on("message", async (data) => {
+    const rid = Number(data.roomId);
 
-  const msg = {
-    room_id: rid,
-    author: data.author,
-    text: data.text,
-    time: new Date().toISOString()
-  };
+    const msg = {
+      id: Date.now(),
+      room_id: rid,
+      author: data.author,
+      text: data.text,
+      time: new Date().toISOString()
+    };
 
-  const { error } = await supabase.from('messages').insert(msg);
+    await supabase.from('messages').insert(msg);
 
-  if (error) {
-    console.error('Supabase insert error:', error);
-    return;
-  }
-
-  io.to(String(data.roomId))
-    .emit("message", msg);
+    io.to(String(data.roomId))
+      .emit("message", msg);
+  });
 });
-
 
 // -------------------- サーバー起動 --------------------
 http.listen(port, ()=>console.log(`学習掲示板（リアルタイム）動作中: ${port}`));
