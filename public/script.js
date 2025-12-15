@@ -1,4 +1,3 @@
-
 // public/script.js
 // クライアントサイド全機能（ルーム一覧 / 作成・参加 / 名前管理 / ワンページチャット / Socket.io）
 const socket = io();
@@ -83,7 +82,42 @@ async function loadRooms() {
 document.getElementById('addRoomBtn').onclick = showPopup;
 document.getElementById('closePopupBtn').onclick = closePopup;
 
-// ルーム作成
+// ---------- メディア追加（＋ボタン） ----------
+const mediaBtn = document.getElementById('mediaBtn');
+const mediaPopup = document.getElementById('mediaPopup');
+const mediaCloseBtn = document.getElementById('mediaCloseBtn');
+const imageUrlInput = document.getElementById('imageUrlInput');
+const imagePreview = document.getElementById('imagePreview');
+
+if (mediaBtn) {
+  mediaBtn.onclick = () => {
+    mediaPopup.style.display = 'flex';
+  };
+}
+
+if (mediaCloseBtn) {
+  mediaCloseBtn.onclick = () => {
+    mediaPopup.style.display = 'none';
+  };
+}
+
+// URL プレビュー
+if (imageUrlInput) {
+  imageUrlInput.addEventListener('input', () => {
+    const url = imageUrlInput.value.trim();
+    if (!url) {
+      imagePreview.innerHTML = '';
+      return;
+    }
+
+    imagePreview.innerHTML = `
+      <img src="${escapeHtml(url)}"
+           style="max-width:200px; border-radius:8px;">
+    `;
+  });
+}
+
+// ---------- ルーム作成 ----------
 document.getElementById('btnCreateRoom').onclick = async () => {
   const name = prompt('ルーム名を入力してください');
   if (!name) return;
@@ -108,7 +142,7 @@ document.getElementById('btnCreateRoom').onclick = async () => {
   loadRooms();
 };
 
-// ルーム参加
+// ---------- ルーム参加 ----------
 document.getElementById('btnJoinRoom').onclick = async () => {
   const code = prompt('ルームコードを入力してください');
   if (!code) return;
@@ -156,12 +190,14 @@ async function loadChat(roomId) {
   const messages = await res.json();
   const chatArea = document.getElementById('chatArea');
   chatArea.innerHTML = '';
-  messages.forEach(m => appendMessage(m.author, m.text, m.time));
+  messages.forEach(m =>
+    appendMessage(m.author, m.text, m.time, m.image_url)
+  );
   chatArea.scrollTop = chatArea.scrollHeight;
 }
 
 // ---------- メッセージ表示 ----------
-function appendMessage(author, text, time) {
+function appendMessage(author, text, time, imageUrl) {
   const chatArea = document.getElementById('chatArea');
   const wrapper = document.createElement('div');
   const name = localStorage.getItem('userName') || '名無し';
@@ -171,7 +207,11 @@ function appendMessage(author, text, time) {
   bubble.className = 'bubble ' + (isMe ? 'right' : 'left');
   bubble.innerHTML = `
     <div style="font-size:12px; color:#444; margin-bottom:4px;">${author}</div>
-    <div>${escapeHtml(text)}</div>
+    ${text ? `<div>${escapeHtml(text)}</div>` : ''}
+    ${imageUrl ? `
+      <img src="${imageUrl}"
+           style="max-width:220px; margin-top:6px; border-radius:8px;">
+    ` : ''}
     <div style="font-size:10px; color:#888; margin-top:6px;">
       ${time ? new Date(time).toLocaleTimeString() : ''}
     </div>
@@ -184,7 +224,7 @@ function appendMessage(author, text, time) {
   chatArea.scrollTop = chatArea.scrollHeight;
 }
 
-// 簡易エスケープ
+// ---------- 簡易エスケープ ----------
 function escapeHtml(s) {
   if (!s) return '';
   return s.replace(/&/g,'&amp;')
@@ -196,14 +236,20 @@ function escapeHtml(s) {
 document.getElementById('sendBtn').onclick = () => {
   const textInput = document.getElementById('chatInput');
   const text = textInput.value.trim();
-  if (!text) return;
+  const imageUrl = imageUrlInput ? imageUrlInput.value.trim() : '';
+
+  if (!text && !imageUrl) return;
 
   const author = localStorage.getItem('userName') || '名無し';
   const roomId = window.currentRoomId;
   if (!roomId) return alert('ルームが選択されていない');
 
-  socket.emit('message', { roomId, author, text });
+  socket.emit('message', { roomId, author, text, image_url: imageUrl });
+
   textInput.value = '';
+  if (imageUrlInput) imageUrlInput.value = '';
+  if (imagePreview) imagePreview.innerHTML = '';
+  if (mediaPopup) mediaPopup.style.display = 'none';
 };
 
 document.getElementById('chatInput').addEventListener('keydown', (e) => {
@@ -217,7 +263,7 @@ document.getElementById('chatInput').addEventListener('keydown', (e) => {
 socket.on('message', (data) => {
   if (!window.currentRoomId) return;
   if (String(data.room_id) !== String(window.currentRoomId)) return;
-  appendMessage(data.author, data.text, data.time);
+  appendMessage(data.author, data.text, data.time, data.image_url);
 });
 
 // ---------- 戻る ----------
