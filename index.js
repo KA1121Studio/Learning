@@ -59,7 +59,6 @@ app.post('/posts/:postId/comments', async (req, res) => {
   const postId = Number(req.params.postId);
   const { author, content } = req.body;
 
-  // 1. 投稿取得
   const { data: post, error: selectError } = await supabase
     .from('posts')
     .select('comments')
@@ -67,11 +66,9 @@ app.post('/posts/:postId/comments', async (req, res) => {
     .single();
 
   if (selectError || !post) {
-    console.error(selectError);
     return res.status(404).json({ error: '投稿が見つからない' });
   }
 
-  // 2. コメント追加
   const newComment = {
     id: Date.now(),
     author,
@@ -80,14 +77,12 @@ app.post('/posts/:postId/comments', async (req, res) => {
 
   const updatedComments = [...(post.comments || []), newComment];
 
-  // 3. UPDATE
   const { error: updateError } = await supabase
     .from('posts')
     .update({ comments: updatedComments })
     .eq('id', postId);
 
   if (updateError) {
-    console.error(updateError);
     return res.status(500).json({ error: 'コメント保存でエラー' });
   }
 
@@ -153,21 +148,17 @@ app.post('/kanri/update-role/:targetId', async (req,res)=>{
 });
 
 
-// -------------------- ルームAPI：ここから Supabase 化 --------------------
-
-// ルームID生成（そのまま）
+// -------------------- ルームAPI（Supabase） --------------------
 function generateRoomId() {
   return Math.floor(100000 + Math.random() * 900000);
 }
 
-// ★ Supabase 版：ルーム一覧
 app.get('/rooms', async (req, res) => {
   const { data, error } = await supabase.from('rooms').select('*');
   if (error) return res.status(500).json({ error });
   res.json(data);
 });
 
-// ★ Supabase 版：ルーム作成
 app.post('/rooms', async (req, res) => {
   const { name, creator } = req.body;
 
@@ -183,7 +174,6 @@ app.post('/rooms', async (req, res) => {
   res.json({ success: true, room });
 });
 
-// ★ Supabase 版：ルーム参加
 app.post('/rooms/:id/join', async (req, res) => {
   const roomId = Number(req.params.id);
   const { user } = req.body;
@@ -195,7 +185,6 @@ app.post('/rooms/:id/join', async (req, res) => {
   res.json({ ok: true });
 });
 
-// ★ Supabase 版：メッセージ一覧
 app.get('/rooms/:roomId/messages', async (req, res) => {
   const roomId = Number(req.params.roomId);
 
@@ -209,7 +198,6 @@ app.get('/rooms/:roomId/messages', async (req, res) => {
   res.json(data);
 });
 
-// ★ Supabase 版：メッセージ投稿
 app.post('/rooms/:roomId/messages', async (req, res) => {
   const roomId = Number(req.params.roomId);
 
@@ -218,6 +206,7 @@ app.post('/rooms/:roomId/messages', async (req, res) => {
     room_id: roomId,
     author: req.body.author,
     text: req.body.text,
+    image_url: req.body.image_url || null,
     time: new Date().toISOString()
   };
 
@@ -227,7 +216,6 @@ app.post('/rooms/:roomId/messages', async (req, res) => {
   res.json({ success: true });
 });
 
-// ★ Supabase 版：ルーム削除
 app.delete('/rooms/:id', async (req, res) => {
   const roomId = Number(req.params.id);
 
@@ -241,19 +229,11 @@ app.delete('/rooms/:id', async (req, res) => {
 });
 
 
-// -------------------- 管理画面 HTML --------------------
-app.get('/kanri', (req,res)=>{
-  const html = `...（省略）...`;
-  res.send(html);
-});
-
-
 // -------------------- Socket.io --------------------
 const http = require('http').createServer(app);
 const { Server } = require('socket.io');
 const io = new Server(http);
 
-// ★ メッセージ保存は Supabase 化
 io.on("connection", (socket) => {
   socket.on("joinRoom", (roomId) => {
     socket.join(String(roomId));
@@ -267,6 +247,7 @@ io.on("connection", (socket) => {
       room_id: rid,
       author: data.author,
       text: data.text,
+      image_url: data.image_url || null,
       time: new Date().toISOString()
     };
 
