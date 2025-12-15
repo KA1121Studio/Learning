@@ -46,7 +46,7 @@ document.getElementById('settingsBtn').onclick = () => {
   document.getElementById('userNameDisplay').textContent = newName;
 };
 
-// ---------- ルーム読み込み（参加済みのみ表示） ----------
+// ---------- ルーム読み込み ----------
 async function loadRooms() {
   const res = await fetch('/rooms');
   const rooms = await res.json();
@@ -75,7 +75,7 @@ async function loadRooms() {
     });
 }
 
-// ---------- プラスボタンとメニュー ----------
+// ---------- プラスメニュー ----------
 document.getElementById('addRoomBtn').onclick = showPopup;
 document.getElementById('closePopupBtn').onclick = closePopup;
 
@@ -83,6 +83,7 @@ document.getElementById('closePopupBtn').onclick = closePopup;
 document.getElementById('btnCreateRoom').onclick = async () => {
   const name = prompt('ルーム名を入力してください');
   if (!name) return;
+
   const creator = localStorage.getItem('userName') || '名無し';
 
   const res = await fetch('/rooms', {
@@ -179,7 +180,7 @@ function appendMessage(author, text, time, image) {
   chatArea.scrollTop = chatArea.scrollHeight;
 }
 
-// ---------- 簡易エスケープ ----------
+// ---------- エスケープ ----------
 function escapeHtml(s) {
   if (!s) return '';
   return s.replace(/&/g,'&amp;')
@@ -211,21 +212,22 @@ document.getElementById('sendBtn').onclick = () => {
   selectedImageUrl = null;
 };
 
-document.getElementById('chatInput').addEventListener('keydown', (e) => {
+// ---------- Enter送信 ----------
+document.getElementById('chatInput').addEventListener('keydown', e => {
   if (e.key === 'Enter') {
     e.preventDefault();
     document.getElementById('sendBtn').click();
   }
 });
 
-// ---------- Socket.io 受信 ----------
-socket.on('message', (data) => {
+// ---------- Socket受信 ----------
+socket.on('message', data => {
   if (!window.currentRoomId) return;
   if (String(data.room_id) !== String(window.currentRoomId)) return;
   appendMessage(data.author, data.text, data.time, data.image);
 });
 
-// ---------- DOM 完成後 ----------
+// ---------- 戻る ----------
 window.addEventListener('DOMContentLoaded', () => {
   const backBtn = document.getElementById('backBtn');
   if (backBtn) {
@@ -237,13 +239,36 @@ window.addEventListener('DOMContentLoaded', () => {
     };
   }
 
-  const addMediaBtn = document.getElementById('addMediaBtn');
-  if (addMediaBtn) {
-    addMediaBtn.onclick = () => {
-      const url = prompt('画像URLを入力');
-      if (!url) return;
+  // ===== メディアポップアップ =====
+  const mediaBtn = document.getElementById('mediaBtn');
+  const mediaPopup = document.getElementById('mediaPopup');
+  const closeMediaBtn = document.getElementById('closeMediaBtn');
+  const imageUrlInput = document.getElementById('imageUrlInput');
+  const imagePreview = document.getElementById('imagePreview');
+
+  if (mediaBtn) {
+    mediaBtn.onclick = () => {
+      mediaPopup.style.display = 'flex';
+    };
+  }
+
+  if (closeMediaBtn) {
+    closeMediaBtn.onclick = () => {
+      mediaPopup.style.display = 'none';
+    };
+  }
+
+  if (imageUrlInput) {
+    imageUrlInput.oninput = () => {
+      const url = imageUrlInput.value.trim();
+      if (!url) {
+        imagePreview.style.display = 'none';
+        selectedImageUrl = null;
+        return;
+      }
+      imagePreview.src = url;
+      imagePreview.style.display = 'block';
       selectedImageUrl = url;
-      alert('画像をセットしました');
     };
   }
 });
