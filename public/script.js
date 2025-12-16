@@ -1,12 +1,12 @@
 // public/script.js
-// クライアントサイド全機能（ルーム一覧 / 作成・参加 / 名前管理 / ワンページチャット / Socket.io）
 const socket = io();
 
 // 共通
 window.currentRoomId = null;
+let selectedImageUrl = null;
 
 // ---------- UI 初期化 ----------
-function showPopup() { document.getElementById('popup').style.display = 'flex'; }
+function showPopup(e) { if(e) e.stopPropagation(); document.getElementById('popup').style.display = 'flex'; }
 function closePopup() { document.getElementById('popup').style.display = 'none'; }
 
 // ---------- 参加ルーム保存 ----------
@@ -27,6 +27,7 @@ window.addEventListener('load', () => {
   } else {
     document.getElementById('userNameDisplay').textContent = user;
   }
+
   loadRooms();
 });
 
@@ -75,7 +76,7 @@ async function loadRooms() {
     });
 }
 
-// ---------- プラスメニュー ----------
+// ---------- プラスボタンとメニュー ----------
 document.getElementById('addRoomBtn').onclick = showPopup;
 document.getElementById('closePopupBtn').onclick = closePopup;
 
@@ -83,7 +84,6 @@ document.getElementById('closePopupBtn').onclick = closePopup;
 document.getElementById('btnCreateRoom').onclick = async () => {
   const name = prompt('ルーム名を入力してください');
   if (!name) return;
-
   const creator = localStorage.getItem('userName') || '名無し';
 
   const res = await fetch('/rooms', {
@@ -137,8 +137,7 @@ async function openRoom(roomId) {
   document.getElementById('homeScreen').style.display = 'none';
   document.getElementById('chatScreen').style.display = 'block';
   document.getElementById('roomTitle').textContent = room.name;
-  document.getElementById('roomInfo').textContent =
-    '作成者: ' + (room.creator || '-');
+  document.getElementById('roomInfo').textContent = '作成者: ' + (room.creator || '-');
 
   window.currentRoomId = String(room.id);
   socket.emit('joinRoom', String(room.id));
@@ -183,13 +182,8 @@ function appendMessage(author, text, time, image) {
 // ---------- エスケープ ----------
 function escapeHtml(s) {
   if (!s) return '';
-  return s.replace(/&/g,'&amp;')
-          .replace(/</g,'&lt;')
-          .replace(/>/g,'&gt;');
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
-
-// ---------- 画像URL管理 ----------
-let selectedImageUrl = null;
 
 // ---------- 送信 ----------
 document.getElementById('sendBtn').onclick = () => {
@@ -201,26 +195,17 @@ document.getElementById('sendBtn').onclick = () => {
   const roomId = window.currentRoomId;
   if (!roomId) return alert('ルームが選択されていない');
 
-  socket.emit('message', {
-    roomId,
-    author,
-    text,
-    image: selectedImageUrl
-  });
+  socket.emit('message', { roomId, author, text, image: selectedImageUrl });
 
   textInput.value = '';
   selectedImageUrl = null;
 };
 
-// ---------- Enter送信 ----------
 document.getElementById('chatInput').addEventListener('keydown', e => {
-  if (e.key === 'Enter') {
-    e.preventDefault();
-    document.getElementById('sendBtn').click();
-  }
+  if (e.key === 'Enter') { e.preventDefault(); document.getElementById('sendBtn').click(); }
 });
 
-// ---------- Socket受信 ----------
+// ---------- Socket.io 受信 ----------
 socket.on('message', data => {
   if (!window.currentRoomId) return;
   if (String(data.room_id) !== String(window.currentRoomId)) return;
@@ -236,41 +221,26 @@ window.addEventListener('DOMContentLoaded', () => {
       document.getElementById('homeScreen').style.display = 'block';
       window.currentRoomId = null;
       document.getElementById('chatArea').innerHTML = '';
-
-      // ★ ここだけ追加（原因の本体）
-      document.getElementById('popup').style.display = 'none';
-      document.getElementById('mediaPopup').style.display = 'none';
-      document.getElementById('namePopup').style.display = 'none';
     };
   }
 
-  // ===== メディアポップアップ =====
+  // メディアポップアップ（HTMLにある場合のみ）
   const mediaBtn = document.getElementById('mediaBtn');
   const mediaPopup = document.getElementById('mediaPopup');
   const closeMediaBtn = document.getElementById('closeMediaBtn');
   const imageUrlInput = document.getElementById('imageUrlInput');
   const imagePreview = document.getElementById('imagePreview');
 
-  if (mediaBtn) {
-    mediaBtn.onclick = () => {
-      mediaPopup.style.display = 'flex';
-    };
+  if (mediaBtn && mediaPopup) {
+    mediaBtn.onclick = e => { e.stopPropagation(); mediaPopup.style.display = 'flex'; };
   }
-
-  if (closeMediaBtn) {
-    closeMediaBtn.onclick = () => {
-      mediaPopup.style.display = 'none';
-    };
+  if (closeMediaBtn && mediaPopup) {
+    closeMediaBtn.onclick = () => mediaPopup.style.display = 'none';
   }
-
-  if (imageUrlInput) {
+  if (imageUrlInput && imagePreview) {
     imageUrlInput.oninput = () => {
       const url = imageUrlInput.value.trim();
-      if (!url) {
-        imagePreview.style.display = 'none';
-        selectedImageUrl = null;
-        return;
-      }
+      if (!url) { imagePreview.style.display = 'none'; selectedImageUrl = null; return; }
       imagePreview.src = url;
       imagePreview.style.display = 'block';
       selectedImageUrl = url;
