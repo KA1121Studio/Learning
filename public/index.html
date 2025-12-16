@@ -5,45 +5,144 @@
   <meta charset="utf-8" />
   <title>ホーム</title>
   <link rel="icon" href="https://upload.wikimedia.org/wikipedia/commons/1/19/Google_Classroom_Logo.svg" />
-  <style>
-    body { font-family: Arial, sans-serif; margin:0; padding:0; }
-    .container { padding:16px; }
-    #topBar { display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid #eee; }
-    #roomList { list-style:none; padding:0; margin:10px 0; }
-    #roomList li { padding:12px; border-bottom:1px solid #f0f0f0; cursor:pointer; display:flex; justify-content:space-between; align-items:center; }
-    #addRoomBtn { font-size:26px; cursor:pointer; padding:6px 10px; border-radius:6px; }
-    #userNameDisplay { margin-right:12px; }
+ <style>
+  body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+  }
 
-    /* popup */
-    #popup, #namePopup, #mediaPopup {
-  display:none;
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,0.4);
-  justify-content:center;
-  align-items:center;
-}
+  .container {
+    padding: 16px;
+  }
 
-    .popupBox { background:white; padding:18px; border-radius:10px; width:320px; text-align:center; }
-   
-    /* chat screen */
-    #chatScreen { display:none; height:100vh; flex-direction:column; }
-    #chatHeader { display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid #eee; }
-    #chatArea { padding:12px; height:60vh; overflow-y:auto; background:#fafafa; }
-    .bubble { padding:10px 12px; margin:6px 0; border-radius:16px; max-width:70%; display:inline-block; }
-    .left { background:white; border:1px solid #eee; border-bottom-left-radius:4px; }
-    .right { background:#d3f0ff; align-self:flex-end; border-bottom-right-radius:4px; }
-    #chatControls { display:flex; gap:8px; padding:10px 0; border-top:1px solid #eee; }
-    input[type="text"] { padding:8px; flex:1; border-radius:8px; border:1px solid #ddd; }
+  /* ===== ホーム画面 ===== */
+  #homeScreen {
+    position: relative;
+    z-index: 1;
+  }
 
-    button { cursor:pointer; }
-    .small { font-size:14px; padding:6px 8px; }
+  #topBar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid #eee;
+  }
 
-#popup, #namePopup, #mediaPopup {
-  z-index: 9999;
-}
-    
-  </style>
+  #roomList {
+    list-style: none;
+    padding: 0;
+    margin: 10px 0;
+  }
+
+  #roomList li {
+    padding: 12px;
+    border-bottom: 1px solid #f0f0f0;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  #addRoomBtn {
+    font-size: 26px;
+    cursor: pointer;
+    padding: 6px 10px;
+    border-radius: 6px;
+  }
+
+  #userNameDisplay {
+    margin-right: 12px;
+  }
+
+  /* ===== ポップアップ共通 ===== */
+  #popup,
+  #namePopup,
+  #mediaPopup {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+  }
+
+  .popupBox {
+    background: white;
+    padding: 18px;
+    border-radius: 10px;
+    width: 320px;
+    text-align: center;
+  }
+
+  /* ===== チャット画面 ===== */
+  #chatScreen {
+    display: none;
+    height: 100vh;
+    flex-direction: column;
+  }
+
+  #chatHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid #eee;
+  }
+
+  #chatArea {
+    padding: 12px;
+    height: 60vh;
+    overflow-y: auto;
+    background: #fafafa;
+  }
+
+  .bubble {
+    padding: 10px 12px;
+    margin: 6px 0;
+    border-radius: 16px;
+    max-width: 70%;
+    display: inline-block;
+  }
+
+  .left {
+    background: white;
+    border: 1px solid #eee;
+    border-bottom-left-radius: 4px;
+  }
+
+  .right {
+    background: #d3f0ff;
+    align-self: flex-end;
+    border-bottom-right-radius: 4px;
+  }
+
+  #chatControls {
+    display: flex;
+    gap: 8px;
+    padding: 10px 0;
+    border-top: 1px solid #eee;
+  }
+
+  input[type="text"] {
+    padding: 8px;
+    flex: 1;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+  }
+
+  button {
+    cursor: pointer;
+  }
+
+  .small {
+    font-size: 14px;
+    padding: 6px 8px;
+  }
+</style>
+
 </head>
 <body>
   <div class="container" id="homeScreen">
