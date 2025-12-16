@@ -8,9 +8,11 @@ let selectedImageUrl = null;
 // ---------- UI ----------
 function showPopup(e) {
   if (e) e.stopPropagation();
+  closePopup();               // ← これを追加
   const popup = document.getElementById('popup');
   if (popup) popup.style.display = 'flex';
 }
+
 function closePopup() {
   const popup = document.getElementById('popup');
   if (popup) popup.style.display = 'none';
