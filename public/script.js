@@ -68,6 +68,7 @@ async function loadRooms() {
 
 // ---------- ルームを開く ----------
 async function openRoom(roomId) {
+  closePopup(); // ← これを追加
   saveJoinedRoom(roomId);
 
   await fetch('/rooms/' + roomId + '/join', {
