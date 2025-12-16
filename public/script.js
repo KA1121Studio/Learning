@@ -236,6 +236,11 @@ window.addEventListener('DOMContentLoaded', () => {
       document.getElementById('homeScreen').style.display = 'block';
       window.currentRoomId = null;
       document.getElementById('chatArea').innerHTML = '';
+
+      // ★ ここだけ追加（原因の本体）
+      document.getElementById('popup').style.display = 'none';
+      document.getElementById('mediaPopup').style.display = 'none';
+      document.getElementById('namePopup').style.display = 'none';
     };
   }
 
