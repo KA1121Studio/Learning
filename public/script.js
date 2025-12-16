@@ -5,9 +5,16 @@ const socket = io();
 window.currentRoomId = null;
 let selectedImageUrl = null;
 
-// ---------- UI 初期化 ----------
-function showPopup(e) { if(e) e.stopPropagation(); document.getElementById('popup').style.display = 'flex'; }
-function closePopup() { document.getElementById('popup').style.display = 'none'; }
+// ---------- UI ----------
+function showPopup(e) {
+  if (e) e.stopPropagation();
+  const popup = document.getElementById('popup');
+  if (popup) popup.style.display = 'flex';
+}
+function closePopup() {
+  const popup = document.getElementById('popup');
+  if (popup) popup.style.display = 'none';
+}
 
 // ---------- 参加ルーム保存 ----------
 function saveJoinedRoom(roomId) {
@@ -27,25 +34,8 @@ window.addEventListener('load', () => {
   } else {
     document.getElementById('userNameDisplay').textContent = user;
   }
-
   loadRooms();
 });
-
-document.getElementById('saveNameBtn').onclick = () => {
-  const name = document.getElementById('nameInput').value.trim();
-  if (!name) return alert('名前を入力して');
-  localStorage.setItem('userName', name);
-  document.getElementById('userNameDisplay').textContent = name;
-  document.getElementById('namePopup').style.display = 'none';
-};
-
-document.getElementById('settingsBtn').onclick = () => {
-  const now = localStorage.getItem('userName') || '';
-  const newName = prompt('新しい名前を入力', now);
-  if (!newName) return;
-  localStorage.setItem('userName', newName);
-  document.getElementById('userNameDisplay').textContent = newName;
-};
 
 // ---------- ルーム読み込み ----------
 async function loadRooms() {
@@ -76,49 +66,6 @@ async function loadRooms() {
     });
 }
 
-// ---------- プラスボタンとメニュー ----------
-document.getElementById('addRoomBtn').onclick = showPopup;
-document.getElementById('closePopupBtn').onclick = closePopup;
-
-// ---------- ルーム作成 ----------
-document.getElementById('btnCreateRoom').onclick = async () => {
-  const name = prompt('ルーム名を入力してください');
-  if (!name) return;
-  const creator = localStorage.getItem('userName') || '名無し';
-
-  const res = await fetch('/rooms', {
-    method: 'POST',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({ name, creator })
-  });
-
-  const data = await res.json();
-  if (data && data.room) {
-    saveJoinedRoom(data.room.id);
-    document.getElementById('roomCodeDisplay').style.display = 'block';
-    document.getElementById('roomCodeDisplay').innerHTML =
-      'ルームコード: <strong>' + data.room.id + '</strong>';
-  }
-
-  closePopup();
-  loadRooms();
-};
-
-// ---------- ルーム参加 ----------
-document.getElementById('btnJoinRoom').onclick = async () => {
-  const code = prompt('ルームコードを入力してください');
-  if (!code) return;
-
-  const res = await fetch('/rooms');
-  const rooms = await res.json();
-  const room = rooms.find(r => String(r.id) === String(code));
-  if (!room) return alert('ルームが見つかりません');
-
-  saveJoinedRoom(room.id);
-  closePopup();
-  openRoom(room.id);
-};
-
 // ---------- ルームを開く ----------
 async function openRoom(roomId) {
   saveJoinedRoom(roomId);
@@ -137,14 +84,15 @@ async function openRoom(roomId) {
   document.getElementById('homeScreen').style.display = 'none';
   document.getElementById('chatScreen').style.display = 'block';
   document.getElementById('roomTitle').textContent = room.name;
-  document.getElementById('roomInfo').textContent = '作成者: ' + (room.creator || '-');
+  document.getElementById('roomInfo').textContent =
+    '作成者: ' + (room.creator || '-');
 
   window.currentRoomId = String(room.id);
   socket.emit('joinRoom', String(room.id));
   await loadChat(room.id);
 }
 
-// ---------- チャット読み込み ----------
+// ---------- チャット ----------
 async function loadChat(roomId) {
   const res = await fetch('/rooms/' + roomId + '/messages');
   const messages = await res.json();
@@ -154,7 +102,6 @@ async function loadChat(roomId) {
   chatArea.scrollTop = chatArea.scrollHeight;
 }
 
-// ---------- メッセージ表示 ----------
 function appendMessage(author, text, time, image) {
   const chatArea = document.getElementById('chatArea');
   const name = localStorage.getItem('userName') || '名無し';
@@ -179,71 +126,130 @@ function appendMessage(author, text, time, image) {
   chatArea.scrollTop = chatArea.scrollHeight;
 }
 
-// ---------- エスケープ ----------
 function escapeHtml(s) {
   if (!s) return '';
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
-// ---------- 送信 ----------
-document.getElementById('sendBtn').onclick = () => {
-  const textInput = document.getElementById('chatInput');
-  const text = textInput.value.trim();
-  if (!text && !selectedImageUrl) return;
-
-  const author = localStorage.getItem('userName') || '名無し';
-  const roomId = window.currentRoomId;
-  if (!roomId) return alert('ルームが選択されていない');
-
-  socket.emit('message', { roomId, author, text, image: selectedImageUrl });
-
-  textInput.value = '';
-  selectedImageUrl = null;
-};
-
-document.getElementById('chatInput').addEventListener('keydown', e => {
-  if (e.key === 'Enter') { e.preventDefault(); document.getElementById('sendBtn').click(); }
-});
-
-// ---------- Socket.io 受信 ----------
-socket.on('message', data => {
-  if (!window.currentRoomId) return;
-  if (String(data.room_id) !== String(window.currentRoomId)) return;
-  appendMessage(data.author, data.text, data.time, data.image);
-});
-
-// ---------- 戻る ----------
+// ---------- DOM 初期化 & イベント登録 ----------
 window.addEventListener('DOMContentLoaded', () => {
-  const backBtn = document.getElementById('backBtn');
-  if (backBtn) {
-    backBtn.onclick = () => {
-      document.getElementById('chatScreen').style.display = 'none';
-      document.getElementById('homeScreen').style.display = 'block';
-      window.currentRoomId = null;
-      document.getElementById('chatArea').innerHTML = '';
-    };
-  }
 
-  // メディアポップアップ（HTMLにある場合のみ）
+  // 名前
+  document.getElementById('saveNameBtn').onclick = () => {
+    const name = document.getElementById('nameInput').value.trim();
+    if (!name) return alert('名前を入力して');
+    localStorage.setItem('userName', name);
+    document.getElementById('userNameDisplay').textContent = name;
+    document.getElementById('namePopup').style.display = 'none';
+  };
+
+  document.getElementById('settingsBtn').onclick = () => {
+    const now = localStorage.getItem('userName') || '';
+    const newName = prompt('新しい名前を入力', now);
+    if (!newName) return;
+    localStorage.setItem('userName', newName);
+    document.getElementById('userNameDisplay').textContent = newName;
+  };
+
+  // ＋メニュー ← ★ここが一番重要
+  document.getElementById('addRoomBtn').onclick = showPopup;
+  document.getElementById('closePopupBtn').onclick = closePopup;
+
+  // ルーム作成
+  document.getElementById('btnCreateRoom').onclick = async () => {
+    const name = prompt('ルーム名を入力してください');
+    if (!name) return;
+
+    const creator = localStorage.getItem('userName') || '名無し';
+    const res = await fetch('/rooms', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ name, creator })
+    });
+
+    const data = await res.json();
+    if (data?.room) {
+      saveJoinedRoom(data.room.id);
+      document.getElementById('roomCodeDisplay').style.display = 'block';
+      document.getElementById('roomCodeDisplay').innerHTML =
+        'ルームコード: <strong>' + data.room.id + '</strong>';
+    }
+
+    closePopup();
+    loadRooms();
+  };
+
+  // ルーム参加
+  document.getElementById('btnJoinRoom').onclick = async () => {
+    const code = prompt('ルームコードを入力してください');
+    if (!code) return;
+
+    const res = await fetch('/rooms');
+    const rooms = await res.json();
+    const room = rooms.find(r => String(r.id) === String(code));
+    if (!room) return alert('ルームが見つかりません');
+
+    saveJoinedRoom(room.id);
+    closePopup();
+    openRoom(room.id);
+  };
+
+  // 送信
+  document.getElementById('sendBtn').onclick = () => {
+    const input = document.getElementById('chatInput');
+    const text = input.value.trim();
+    if (!text && !selectedImageUrl) return;
+
+    socket.emit('message', {
+      roomId: window.currentRoomId,
+      author: localStorage.getItem('userName') || '名無し',
+      text,
+      image: selectedImageUrl
+    });
+
+    input.value = '';
+    selectedImageUrl = null;
+  };
+
+  document.getElementById('chatInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      document.getElementById('sendBtn').click();
+    }
+  });
+
+  // 戻る
+  document.getElementById('backBtn').onclick = () => {
+    document.getElementById('chatScreen').style.display = 'none';
+    document.getElementById('homeScreen').style.display = 'block';
+    window.currentRoomId = null;
+    document.getElementById('chatArea').innerHTML = '';
+  };
+
+  // メディア
   const mediaBtn = document.getElementById('mediaBtn');
   const mediaPopup = document.getElementById('mediaPopup');
   const closeMediaBtn = document.getElementById('closeMediaBtn');
   const imageUrlInput = document.getElementById('imageUrlInput');
   const imagePreview = document.getElementById('imagePreview');
 
-  if (mediaBtn && mediaPopup) {
-    mediaBtn.onclick = e => { e.stopPropagation(); mediaPopup.style.display = 'flex'; };
-  }
-  if (closeMediaBtn && mediaPopup) {
-    closeMediaBtn.onclick = () => mediaPopup.style.display = 'none';
-  }
-  if (imageUrlInput && imagePreview) {
-    imageUrlInput.oninput = () => {
-      const url = imageUrlInput.value.trim();
-      if (!url) { imagePreview.style.display = 'none'; selectedImageUrl = null; return; }
-      imagePreview.src = url;
-      imagePreview.style.display = 'block';
-      selectedImageUrl = url;
-    };
-  }
+  mediaBtn.onclick = () => mediaPopup.style.display = 'flex';
+  closeMediaBtn.onclick = () => mediaPopup.style.display = 'none';
+  imageUrlInput.oninput = () => {
+    const url = imageUrlInput.value.trim();
+    if (!url) {
+      imagePreview.style.display = 'none';
+      selectedImageUrl = null;
+      return;
+    }
+    imagePreview.src = url;
+    imagePreview.style.display = 'block';
+    selectedImageUrl = url;
+  };
+});
+
+// ---------- Socket ----------
+socket.on('message', data => {
+  if (String(data.room_id) !== String(window.currentRoomId)) return;
+  appendMessage(data.author, data.text, data.time, data.image);
 });
