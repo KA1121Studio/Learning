@@ -8,10 +8,16 @@ let selectedImageUrl = null;
 // ---------- UI ----------
 function showPopup(e) {
   if (e) e.stopPropagation();
-  closePopup();               // ← これを追加
-  const popup = document.getElementById('popup');
-  if (popup) popup.style.display = 'flex';
+
+  // ★ 全ポップアップを必ず閉じる
+  document.getElementById('popup').style.display = 'none';
+  document.getElementById('mediaPopup').style.display = 'none';
+  document.getElementById('namePopup').style.display = 'none';
+
+  // ★ 改めて＋メニューだけ開く
+  document.getElementById('popup').style.display = 'flex';
 }
+
 
 function closePopup() {
   const popup = document.getElementById('popup');
