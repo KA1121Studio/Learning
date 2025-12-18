@@ -180,10 +180,24 @@ app.post('/rooms/:id/join', async (req, res) => {
   const roomId = Number(req.params.id);
   const { user } = req.body;
 
-  const member = { room_id: roomId, user };
-  const { error } = await supabase.from('members').insert(member);
+  // すでに参加しているか確認
+  const { data: existing } = await supabase
+    .from('members')
+    .select('id')
+    .eq('room_id', roomId)
+    .eq('user', user)
+    .maybeSingle();
 
-  if (error) return res.status(500).json({ error });
+  if (existing) {
+    return res.json({ ok: true, alreadyJoined: true });
+  }
+
+  // 未参加なら追加
+  await supabase.from('members').insert({
+    room_id: roomId,
+    user
+  });
+
   res.json({ ok: true });
 });
 
