@@ -18,7 +18,6 @@ function showPopup(e) {
   document.getElementById('popup').style.display = 'flex';
 }
 
-
 function closePopup() {
   const popup = document.getElementById('popup');
   if (popup) popup.style.display = 'none';
@@ -63,20 +62,39 @@ async function loadRooms() {
       left.textContent = r.name + ' (' + r.id + ')';
 
       const right = document.createElement('div');
-      right.style.fontSize = '12px';
-      right.style.color = '#666';
-      right.textContent = new Date(r.created_at).toLocaleString();
+      right.style.display = 'flex';
+      right.style.alignItems = 'center';
+      right.style.gap = '8px';
+
+      const time = document.createElement('div');
+      time.style.fontSize = '12px';
+      time.style.color = '#666';
+      time.textContent = new Date(r.created_at).toLocaleString();
+
+      const menuBtn = document.createElement('div');
+      menuBtn.textContent = '︙';
+      menuBtn.style.cursor = 'pointer';
+      menuBtn.style.fontSize = '18px';
+
+      menuBtn.onclick = (e) => {
+        e.stopPropagation();
+        openRoomSettings(r);
+      };
+
+      right.appendChild(time);
+      right.appendChild(menuBtn);
 
       li.appendChild(left);
       li.appendChild(right);
       li.onclick = () => openRoom(r.id);
+
       ul.appendChild(li);
     });
 }
 
 // ---------- ルームを開く ----------
 async function openRoom(roomId) {
-  closePopup(); // ← これを追加
+  closePopup();
   saveJoinedRoom(roomId);
 
   await fetch('/rooms/' + roomId + '/join', {
@@ -143,7 +161,6 @@ function escapeHtml(s) {
 // ---------- DOM 初期化 & イベント登録 ----------
 window.addEventListener('DOMContentLoaded', () => {
 
-  // 名前
   document.getElementById('saveNameBtn').onclick = () => {
     const name = document.getElementById('nameInput').value.trim();
     if (!name) return alert('名前を入力して');
@@ -160,11 +177,9 @@ window.addEventListener('DOMContentLoaded', () => {
     document.getElementById('userNameDisplay').textContent = newName;
   };
 
-  // ＋メニュー ← ★ここが一番重要
   document.getElementById('addRoomBtn').onclick = showPopup;
   document.getElementById('closePopupBtn').onclick = closePopup;
 
-  // ルーム作成
   document.getElementById('btnCreateRoom').onclick = async () => {
     const name = prompt('ルーム名を入力してください');
     if (!name) return;
@@ -188,7 +203,6 @@ window.addEventListener('DOMContentLoaded', () => {
     loadRooms();
   };
 
-  // ルーム参加
   document.getElementById('btnJoinRoom').onclick = async () => {
     const code = prompt('ルームコードを入力してください');
     if (!code) return;
@@ -203,7 +217,6 @@ window.addEventListener('DOMContentLoaded', () => {
     openRoom(room.id);
   };
 
-  // 送信
   document.getElementById('sendBtn').onclick = () => {
     const input = document.getElementById('chatInput');
     const text = input.value.trim();
@@ -227,7 +240,6 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // 戻る
   document.getElementById('backBtn').onclick = () => {
     document.getElementById('chatScreen').style.display = 'none';
     document.getElementById('homeScreen').style.display = 'block';
@@ -235,7 +247,6 @@ window.addEventListener('DOMContentLoaded', () => {
     document.getElementById('chatArea').innerHTML = '';
   };
 
-  // メディア
   const mediaBtn = document.getElementById('mediaBtn');
   const mediaPopup = document.getElementById('mediaPopup');
   const closeMediaBtn = document.getElementById('closeMediaBtn');
@@ -263,6 +274,7 @@ socket.on('message', data => {
   appendMessage(data.author, data.text, data.time, data.image);
 });
 
+// ---------- ルーム設定 ----------
 let selectedRoomForSettings = null;
 
 async function openRoomSettings(room) {
@@ -310,4 +322,3 @@ document.getElementById('leaveRoomFromSettings').onclick = async () => {
   closeRoomSettings();
   loadRooms();
 };
-
