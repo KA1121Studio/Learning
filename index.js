@@ -292,6 +292,19 @@ app.get('/rooms/:id/members', async (req, res) => {
   res.json(data);
 });
 
+app.get('/notice', async (req, res) => {
+  await db.read();
+  res.json(db.data.notice || { content: '' });
+});
+
+app.post('/notice', async (req, res) => {
+  const { content } = req.body;
+  await db.read();
+  db.data.notice = { content };
+  await db.write();
+  res.json({ success: true });
+});
+
 
 // -------------------- サーバー起動 --------------------
 http.listen(port, ()=>console.log(`学習掲示板（リアルタイム）動作中: ${port}`));
