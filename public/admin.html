@@ -47,6 +47,7 @@
 
   <h1>管理画面（ルーム一覧）</h1>
 
+
   <table id="roomTable">
     <tr>
       <th>ID</th>
@@ -56,6 +57,10 @@
       <th>削除</th>
     </tr>
   </table>
+<h2>お知らせ編集</h2>
+<textarea id="noticeInput" style="width:100%; height:80px;"></textarea><br><br>
+<button onclick="saveNotice()">保存</button>
+
 
   <script>
     async function loadRooms() {
@@ -95,7 +100,26 @@
     }
 
     loadRooms();
-  </script>
+ 
+async function loadNotice() {
+  const res = await fetch('/notice');
+  const data = await res.json();
+  document.getElementById('noticeInput').value = data.content || '';
+}
+
+async function saveNotice() {
+  const content = document.getElementById('noticeInput').value;
+  await fetch('/notice', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content })
+  });
+  alert('保存した');
+}
+
+loadNotice();
+</script>
+
 
 </body>
 </html>
