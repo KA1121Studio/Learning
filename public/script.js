@@ -262,3 +262,52 @@ socket.on('message', data => {
   if (String(data.room_id) !== String(window.currentRoomId)) return;
   appendMessage(data.author, data.text, data.time, data.image);
 });
+
+let selectedRoomForSettings = null;
+
+async function openRoomSettings(room) {
+  selectedRoomForSettings = room;
+
+  const res = await fetch('/rooms/' + room.id + '/members');
+  const members = await res.json();
+
+  const box = document.getElementById('roomSettingsInfo');
+  box.innerHTML = `
+    <div><strong>ルーム名：</strong>${room.name}</div>
+    <div><strong>作成者：</strong>${room.creator || '-'}</div>
+    <div style="margin-top:8px;"><strong>メンバー：</strong></div>
+    <ul>
+      ${members.map(m => `<li>${m.user}</li>`).join('')}
+    </ul>
+  `;
+
+  document.getElementById('roomSettingsPopup').style.display = 'flex';
+}
+
+function closeRoomSettings() {
+  document.getElementById('roomSettingsPopup').style.display = 'none';
+}
+
+document.getElementById('leaveRoomFromSettings').onclick = async () => {
+  if (!selectedRoomForSettings) return;
+
+  const ok = confirm('本当にこのルームから退会する？');
+  if (!ok) return;
+
+  const user = localStorage.getItem('userName') || '名無し';
+
+  await fetch('/rooms/' + selectedRoomForSettings.id + '/leave', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ user })
+  });
+
+  const key = 'joinedRooms';
+  const rooms = JSON.parse(localStorage.getItem(key) || '[]')
+    .filter(id => id !== String(selectedRoomForSettings.id));
+  localStorage.setItem(key, JSON.stringify(rooms));
+
+  closeRoomSettings();
+  loadRooms();
+};
+
