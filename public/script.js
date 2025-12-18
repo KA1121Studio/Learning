@@ -33,6 +33,18 @@ function saveJoinedRoom(roomId) {
   }
 }
 
+// ---------- ★ お知らせ読み込み（追加） ----------
+async function loadNotice() {
+  const res = await fetch('/notice');
+  const data = await res.json();
+
+  const box = document.getElementById('noticeBox');
+  if (data?.content) {
+    box.textContent = data.content;
+    box.style.display = 'block';
+  }
+}
+
 // ---------- 名前管理 ----------
 window.addEventListener('load', () => {
   const user = localStorage.getItem('userName');
@@ -41,6 +53,8 @@ window.addEventListener('load', () => {
   } else {
     document.getElementById('userNameDisplay').textContent = user;
   }
+
+  loadNotice();   // ← ★ これだけ追加
   loadRooms();
 });
 
