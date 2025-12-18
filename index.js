@@ -266,5 +266,18 @@ io.on("connection", (socket) => {
   });
 });
 
+app.get('/rooms/:id/members', async (req, res) => {
+  const roomId = Number(req.params.id);
+
+  const { data, error } = await supabase
+    .from('members')
+    .select('user')
+    .eq('room_id', roomId);
+
+  if (error) return res.status(500).json({ error });
+  res.json(data);
+});
+
+
 // -------------------- サーバー起動 --------------------
 http.listen(port, ()=>console.log(`学習掲示板（リアルタイム）動作中: ${port}`));
