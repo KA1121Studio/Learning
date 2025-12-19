@@ -39,11 +39,18 @@ async function loadNotice() {
   const data = await res.json();
 
   const box = document.getElementById('noticeBox');
+  const closeBtn = document.getElementById('closeNoticeBtn');
+
   if (data?.content) {
-    box.textContent = data.content;
+    box.childNodes[box.childNodes.length - 1].textContent = data.content;
     box.style.display = 'block';
+
+    closeBtn.onclick = () => {
+      box.style.display = 'none';
+    };
   }
 }
+
 
 // ---------- 名前管理 ----------
 window.addEventListener('load', () => {
