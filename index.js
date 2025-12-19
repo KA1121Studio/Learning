@@ -293,17 +293,37 @@ app.get('/rooms/:id/members', async (req, res) => {
 });
 
 app.get('/notice', async (req, res) => {
-  await db.read();
-  res.json(db.data.notice || { content: '' });
+  const { data, error } = await supabase
+    .from('notice')
+    .select('content, updated_at')
+    .eq('id', 1)
+    .single();
+
+  if (error) {
+    return res.json({ content: '' });
+  }
+
+  res.json(data);
 });
 
 app.post('/notice', async (req, res) => {
   const { content } = req.body;
-  await db.read();
-  db.data.notice = { content };
-  await db.write();
+
+  const { error } = await supabase
+    .from('notice')
+    .upsert({
+      id: 1,
+      content,
+      updated_at: new Date().toISOString()
+    });
+
+  if (error) {
+    return res.status(500).json({ error });
+  }
+
   res.json({ success: true });
 });
+
 
 
 // -------------------- サーバー起動 --------------------
