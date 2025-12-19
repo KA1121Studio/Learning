@@ -87,14 +87,11 @@
     }
 
     /* ===== チャット画面 ===== */
-#chatScreen {
-  display: none;
-  height: 100vh;
-  flex-direction: column;
-  position: relative;
-  z-index: 2;
-}
-
+    #chatScreen {
+      display: none;
+      height: 100vh;
+      flex-direction: column;
+    }
 
     #chatHeader {
       display: flex;
@@ -154,27 +151,24 @@
       padding: 6px 8px;
     }
 
-    #versionLabel {
-      position: fixed;
-      right: 16px;
-      bottom: 12px;
-      font-size: 17px;
-      font-weight: bold;
-      color: #555;
-      opacity: 0.9;
-      pointer-events: none;
-    }
-
-    #chatScreen + #versionLabel {
-  display: none;
+#versionLabel {
+  position: fixed;
+  right: 16px;
+  bottom: 12px;
+  font-size: 17px;
+  font-weight: bold;
+  color: #555;
+  opacity: 0.9;
+  pointer-events: none;
 }
 
-    
+
+
+
   </style>
 </head>
 
 <body>
-
   <div class="container" id="homeScreen">
 
     <!-- 上部バー -->
@@ -187,34 +181,34 @@
       </div>
     </div>
 
-    <!-- お知らせ -->
-    <div id="noticeBox" style="
-      margin-top:10px;
-      padding:10px 36px 10px 10px;
-      background:#fffbe6;
-      border:1px solid #ffe58f;
-      border-radius:8px;
-      font-size:14px;
-      display:none;
-      white-space: pre-line;
-      position: relative;
-    ">
-      <span id="closeNoticeBtn" style="
-        position:absolute;
-        top:6px;
-        right:10px;
-        cursor:pointer;
-        font-weight:bold;
-        color:#999;
-        font-size:40px;
-      ">×</span>
-    </div>
+    <!-- ★ お知らせ（topBar の外・直下） -->
+<div id="noticeBox" style="
+  margin-top:10px;
+  padding:10px 36px 10px 10px;
+  background:#fffbe6;
+  border:1px solid #ffe58f;
+  border-radius:8px;
+  font-size:14px;
+  display:none;
+  white-space: pre-line;
+  position: relative;
+">
+<span id="closeNoticeBtn" style="
+  position:absolute;
+  top:6px;
+  right:10px;
+  cursor:pointer;
+  font-weight:bold;
+  color:#999;
+  font-size:40px;
+">×</span>
 
-    <!-- ★ ここを中に入れた -->
+</div>
+</div>
+
+
     <ul id="roomList"></ul>
-    <div id="roomCodeDisplay"
-         style="display:none; margin-top:10px; font-size:15px;"></div>
-
+    <div id="roomCodeDisplay" style="display:none; margin-top:10px; font-size:15px;"></div>
   </div>
 
   <!-- チャット画面 -->
@@ -236,9 +230,56 @@
     </div>
   </div>
 
+  <!-- メディア追加 -->
+  <div id="mediaPopup">
+    <div class="popupBox">
+      <h3>メディアを追加</h3>
+      <input id="imageUrlInput" type="text" placeholder="画像URL" style="width:90%; padding:6px;"><br><br>
+      <input id="imageFileInput" type="file" accept="image/*"><br><br>
+      <img id="imagePreview" style="max-width:100%; display:none; border-radius:8px;"><br><br>
+      <button id="closeMediaBtn" class="small">閉じる</button>
+    </div>
+  </div>
+
+  <!-- ＋メニュー -->
+  <div id="popup">
+    <div class="popupBox">
+      <h3>メニュー</h3>
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <button id="btnCreateRoom" class="small">ルームを作成</button>
+        <button id="btnJoinRoom" class="small">ルームに参加</button>
+        <button id="closePopupBtn" class="small">閉じる</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 名前 -->
+  <div id="namePopup">
+    <div class="popupBox">
+      <h3>名前を決めてください</h3>
+      <input id="nameInput" type="text" placeholder="あなたの名前" style="width:90%; padding:8px; margin-bottom:8px;">
+      <button id="saveNameBtn" class="small">決定</button>
+    </div>
+  </div>
+
+  <!-- ルーム設定 -->
+  <div id="roomSettingsPopup">
+    <div class="popupBox">
+      <h3>ルーム設定</h3>
+      <div id="roomSettingsInfo" style="text-align:left; font-size:14px;"></div>
+      <hr style="margin:12px 0;">
+      <button id="leaveRoomFromSettings" class="small" style="background:#ff4b4b; color:white;">
+        退会
+      </button>
+      <br><br>
+      <button onclick="closeRoomSettings()" class="small">閉じる</button>
+    </div>
+  </div>
+
   <script src="/socket.io/socket.io.js"></script>
   <script src="script.js"></script>
-
+  
+  <!-- バージョン -->
   <div id="versionLabel">v3.1.2</div>
 
 </body>
