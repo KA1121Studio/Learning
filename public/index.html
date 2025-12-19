@@ -161,6 +161,15 @@
       opacity: 0.9;
       pointer-events: none;
     }
+
+  
+  /* チャット画面表示中はバージョンを非表示 */
+  #chatScreen[style*="display: block"] ~ #versionLabel {
+    display: none;
+  }
+
+
+    
   </style>
 </head>
 
