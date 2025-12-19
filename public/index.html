@@ -87,11 +87,14 @@
     }
 
     /* ===== チャット画面 ===== */
-    #chatScreen {
-      display: none;
-      height: 100vh;
-      flex-direction: column;
-    }
+#chatScreen {
+  display: none;
+  height: 100vh;
+  flex-direction: column;
+  position: relative;
+  z-index: 2;
+}
+
 
     #chatHeader {
       display: flex;
@@ -161,6 +164,12 @@
       opacity: 0.9;
       pointer-events: none;
     }
+
+    #chatScreen + #versionLabel {
+  display: none;
+}
+
+    
   </style>
 </head>
 
