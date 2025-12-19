@@ -150,6 +150,21 @@
       font-size: 14px;
       padding: 6px 8px;
     }
+
+#versionLabel {
+  position: fixed;
+  right: 16px;
+  bottom: 12px;
+  font-size: 17px;
+  font-weight: bold;
+  color: #555;
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+
+
+
   </style>
 </head>
 
@@ -250,5 +265,9 @@
 
   <script src="/socket.io/socket.io.js"></script>
   <script src="script.js"></script>
+  
+  <!-- バージョン -->
+  <div id="versionLabel">v1.0.0</div>
+
 </body>
 </html>
