@@ -343,3 +343,97 @@ document.getElementById('leaveRoomFromSettings').onclick = async () => {
   closeRoomSettings();
   loadRooms();
 };
+
+// ---------- 設定 ----------
+const userSettingsPopup = document.getElementById('userSettingsPopup');
+
+document.getElementById('settingsBtn').onclick = () => {
+  userSettingsPopup.style.display = 'flex';
+
+  darkModeToggle.checked = localStorage.getItem('darkMode') === 'on';
+  noticeToggle.checked = localStorage.getItem('noticeHidden') !== 'true';
+  enterSendToggle.checked = localStorage.getItem('enterSend') !== 'off';
+  timeToggle.checked = localStorage.getItem('showTime') !== 'off';
+
+  themeColorPicker.value = localStorage.getItem('themeColor') || '#2196f3';
+  fontSizeRange.value = localStorage.getItem('fontSize') || 14;
+};
+
+function closeUserSettings() {
+  userSettingsPopup.style.display = 'none';
+}
+
+// ダークモード
+darkModeToggle.onchange = e => {
+  localStorage.setItem('darkMode', e.target.checked ? 'on' : 'off');
+  document.body.style.background = e.target.checked ? '#111' : '';
+  document.body.style.color = e.target.checked ? '#eee' : '';
+};
+
+// お知らせ
+noticeToggle.onchange = e =>
+  localStorage.setItem('noticeHidden', e.target.checked ? 'false' : 'true');
+
+// Enter送信
+enterSendToggle.onchange = e =>
+  localStorage.setItem('enterSend', e.target.checked ? 'on' : 'off');
+
+// 時刻
+timeToggle.onchange = e =>
+  localStorage.setItem('showTime', e.target.checked ? 'on' : 'off');
+
+// テーマカラー
+themeColorPicker.oninput = e =>
+  document.documentElement.style.setProperty('--theme', e.target.value);
+
+// フォントサイズ
+fontSizeRange.oninput = e =>
+  document.body.style.fontSize = e.target.value + 'px';
+
+// 名前変更
+changeNameBtn.onclick = () => {
+  const now = localStorage.getItem('userName') || '';
+  const name = prompt('新しい名前', now);
+  if (!name) return;
+  localStorage.setItem('userName', name);
+  userNameDisplay.textContent = name;
+};
+
+// ---------- 利用規約 ----------
+function checkTerms() {
+  if (localStorage.getItem('termsAgreed') !== 'true')
+    termsPopup.style.display = 'flex';
+}
+
+agreeTermsBtn.onclick = () => {
+  localStorage.setItem('termsAgreed', 'true');
+  termsPopup.style.display = 'none';
+};
+
+// ---------- プライバシーポリシー ----------
+function checkPrivacy() {
+  if (localStorage.getItem('privacyAgreed') !== 'true')
+    privacyPopup.style.display = 'flex';
+}
+
+agreePrivacyBtn.onclick = () => {
+  localStorage.setItem('privacyAgreed', 'true');
+  privacyPopup.style.display = 'none';
+};
+
+openTermsBtn.onclick = () => termsPopup.style.display = 'flex';
+openPrivacyBtn.onclick = () => privacyPopup.style.display = 'flex';
+
+// ---------- 初期反映 ----------
+window.addEventListener('load', () => {
+  if (localStorage.getItem('darkMode') === 'on') {
+    document.body.style.background = '#111';
+    document.body.style.color = '#eee';
+  }
+  document.body.style.fontSize =
+    (localStorage.getItem('fontSize') || 14) + 'px';
+
+  checkTerms();
+  checkPrivacy();
+});
+
