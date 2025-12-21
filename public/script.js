@@ -431,3 +431,8 @@ window.addEventListener('load', () => {
   checkPrivacy();
 });
 
+if ('Notification' in window) {
+  if (Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
+}
