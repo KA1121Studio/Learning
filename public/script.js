@@ -385,8 +385,12 @@ themeColorPicker.oninput = e => {
 };
 
 // フォントサイズ
-fontSizeRange.oninput = e =>
-  document.body.style.fontSize = e.target.value + 'px';
+// フォントサイズ
+fontSizeRange.oninput = e => {
+  const size = e.target.value;
+  document.body.style.fontSize = size + 'px';
+  localStorage.setItem('fontSize', size);
+};
 
 // 名前変更
 changeNameBtn.onclick = () => {
