@@ -532,7 +532,8 @@ background:rgba(0,0,0,0.6); justify-content:center; align-items:center; z-index:
   <!-- バージョン -->
   <div id="versionLabel">v3.6.5</div>
   
-  if ('serviceWorker' in navigator) {
+<script>
+if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js')
     .then(() => {
       console.log('Service Worker 登録完了');
@@ -541,5 +542,7 @@ background:rgba(0,0,0,0.6); justify-content:center; align-items:center; z-index:
       console.error('SW 登録失敗', err);
     });
 }
+</script>
+
 </body>
 </html>
