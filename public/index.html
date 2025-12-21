@@ -174,6 +174,234 @@
 </head>
 
 <body>
+  <!-- ユーザー設定 -->
+<div id="userSettingsPopup" style="
+  display:none;
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.4);
+  justify-content:center;
+  align-items:center;
+  z-index:9999;
+">
+  <div class="popupBox" style="text-align:left; max-height:80vh; overflow:auto;">
+    <h3>設定</h3>
+
+    <label><input type="checkbox" id="darkModeToggle"> ダークモード</label><br><br>
+    <label><input type="checkbox" id="noticeToggle"> お知らせを表示</label><br><br>
+    <label><input type="checkbox" id="enterSendToggle"> Enterで送信</label><br><br>
+    <label><input type="checkbox" id="timeToggle"> 時刻を表示</label><br><br>
+
+    <label>
+      テーマカラー
+      <input type="color" id="themeColorPicker">
+    </label><br><br>
+
+    <label>
+      文字サイズ
+      <input type="range" id="fontSizeRange" min="12" max="20">
+    </label><br><br>
+
+    <button id="changeNameBtn" class="small">名前を変更</button><br><br>
+    <button id="openTermsBtn" class="small">利用規約</button><br><br>
+    <button id="openPrivacyBtn" class="small">プライバシーポリシー</button><br><br>
+
+    <button onclick="closeUserSettings()" class="small">閉じる</button>
+  </div>
+</div>
+
+<!-- 利用規約 -->
+<div id="termsPopup" style="display:none; position:fixed; inset:0;
+background:rgba(0,0,0,0.6); justify-content:center; align-items:center; z-index:10000;">
+  <div class="popupBox" style="max-width:500px; max-height:80vh; overflow:auto; text-align:left;">
+    <h3>利用規約</h3>
+   <p style="font-size:14px; line-height:1.7;">
+本利用規約（以下「本規約」）は、本サービスの利用条件を定めるもの。
+利用者は、本規約に同意した上で本サービスを利用するものとする。
+
+<br><br>
+
+第1条（目的）<br>
+本サービスは、学習および情報共有を目的としたチャット・掲示板サービス。
+教育的利用を前提として提供される。
+
+<br><br>
+
+第2条（利用登録）<br>
+利用者は、虚偽の情報を登録してはならない。
+利用者名は第三者の権利を侵害しないものとする。
+
+<br><br>
+
+第3条（禁止事項）<br>
+利用者は以下の行為を行ってはならない。<br>
+・誹謗中傷、差別的または暴力的表現<br>
+・個人情報（住所、電話番号、学校名等）の投稿<br>
+・不正アクセス、なりすまし行為<br>
+・スパム行為、過度な広告行為<br>
+・管理者の運営を妨害する行為<br>
+・法令または公序良俗に反する行為
+
+<br><br>
+
+第4条（投稿内容）<br>
+利用者が投稿した文章、画像等の内容について、
+その責任はすべて利用者自身が負うものとする。
+運営者は必要に応じて投稿内容を削除・編集できるものとする。
+
+<br><br>
+
+第5条（知的財産権）<br>
+本サービス内のコンテンツの著作権は、
+利用者または正当な権利者に帰属する。
+ただし、運営者はサービス運営の範囲内で
+無償利用できるものとする。
+
+<br><br>
+
+第6条（サービスの変更・停止）<br>
+運営者は、利用者に事前通知することなく、
+本サービスの全部または一部を変更・停止できるものとする。
+
+<br><br>
+
+第7条（免責事項）<br>
+本サービスの利用によって生じた損害について、
+運営者は一切の責任を負わない。
+利用者間で生じたトラブルは、
+当事者間で解決するものとする。
+
+<br><br>
+
+第8条（利用制限・アカウント削除）<br>
+利用者が本規約に違反した場合、
+運営者は利用停止、強制退会等の措置を取ることができる。
+
+<br><br>
+
+第9条（個人情報の取扱い）<br>
+本サービスは、利用者の個人情報を適切に管理し、
+第三者に無断で提供しない。
+ただし、法令に基づく場合を除く。
+
+<br><br>
+
+第10条（規約の変更）<br>
+運営者は、本規約を随時変更できるものとする。
+変更後の規約は、本サービス上に表示した時点で効力を生じる。
+
+<br><br>
+
+第11条（準拠法・管轄）<br>
+本規約は日本法を準拠法とし、
+本サービスに関する紛争については、
+運営者所在地の管轄裁判所を専属的合意管轄とする。
+
+<br><br>
+
+制定日：2025年<br>
+運営者：Learning Board
+</p>
+
+    <button id="agreeTermsBtn" class="small" style="width:100%;">同意する</button>
+  </div>
+</div>
+
+<!-- プライバシーポリシー -->
+<div id="privacyPopup" style="display:none; position:fixed; inset:0;
+background:rgba(0,0,0,0.6); justify-content:center; align-items:center; z-index:10000;">
+  <div class="popupBox" style="max-width:500px; max-height:80vh; overflow:auto; text-align:left;">
+    <h3>プライバシーポリシー</h3>
+    <p style="font-size:14px; line-height:1.7;">
+本プライバシーポリシーは、本サービス（以下「本サービス」）における
+利用者の個人情報および利用情報の取扱いについて定めるもの。
+
+<br><br>
+
+第1条（取得する情報）<br>
+本サービスは、以下の情報を取得する場合がある。<br>
+・利用者が入力した表示名<br>
+・チャットおよび掲示板への投稿内容（文章・画像）<br>
+・ルーム参加情報、利用履歴<br>
+・Cookieおよびローカルストレージに保存される設定情報<br>
+・IPアドレス、アクセス日時、利用環境等の技術情報
+
+<br><br>
+
+第2条（情報の利用目的）<br>
+取得した情報は、以下の目的で利用する。<br>
+・本サービスの提供および運営<br>
+・不正利用の防止およびセキュリティ確保<br>
+・利用状況の分析および機能改善<br>
+・利用者からの問い合わせ対応
+
+<br><br>
+
+第3条（情報の管理）<br>
+本サービスは、取得した情報について適切な安全管理措置を講じ、
+漏えい、滅失、改ざん等の防止に努める。
+
+<br><br>
+
+第4条（第三者提供）<br>
+本サービスは、以下の場合を除き、
+利用者の情報を第三者に提供しない。<br>
+・本人の同意がある場合<br>
+・法令に基づく開示要請がある場合<br>
+・サービス運営に必要な範囲で業務委託を行う場合
+
+<br><br>
+
+第5条（外部サービスの利用）<br>
+本サービスは、機能提供のため以下の外部サービスを利用する。<br>
+・Supabase（データベース、認証、ストレージ）<br>
+・Render（サーバーホスティング）<br>
+これらのサービスにおいては、
+各提供事業者のプライバシーポリシーが適用される。
+
+<br><br>
+
+第6条（Cookie・ローカルストレージ）<br>
+本サービスは、利便性向上のためCookieおよび
+ローカルストレージを利用する。
+これらはブラウザ設定により無効化できる。
+
+<br><br>
+
+第7条（未成年の利用）<br>
+未成年者が本サービスを利用する場合、
+保護者の同意を得たものとみなす。
+
+<br><br>
+
+第8条（情報の開示・訂正・削除）<br>
+利用者は、自身の情報について、
+開示・訂正・削除を求めることができる。
+ただし、サービス運営に必要な情報については
+削除できない場合がある。
+
+<br><br>
+
+第9条（プライバシーポリシーの変更）<br>
+本サービスは、本ポリシーを随時変更できるものとする。
+変更後の内容は本サービス上に掲載した時点で効力を生じる。
+
+<br><br>
+
+第10条（お問い合わせ）<br>
+本ポリシーに関する問い合わせは、
+本サービス内の管理者まで連絡すること。
+
+<br><br>
+
+制定日：2025年<br>
+運営者：Learning Board
+</p>
+
+    <button id="agreePrivacyBtn" class="small" style="width:100%;">同意する</button>
+  </div>
+</div>
+
   <div class="container" id="homeScreen">
 
     <!-- 上部バー -->
