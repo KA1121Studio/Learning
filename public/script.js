@@ -377,8 +377,12 @@ timeToggle.onchange = e =>
   localStorage.setItem('showTime', e.target.checked ? 'on' : 'off');
 
 // テーマカラー
-themeColorPicker.oninput = e =>
-  document.documentElement.style.setProperty('--theme', e.target.value);
+// テーマカラー
+themeColorPicker.oninput = e => {
+  const color = e.target.value;
+  document.documentElement.style.setProperty('--theme', color);
+  localStorage.setItem('themeColor', color);
+};
 
 // フォントサイズ
 fontSizeRange.oninput = e =>
