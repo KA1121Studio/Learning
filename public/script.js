@@ -431,9 +431,16 @@ window.addEventListener('load', () => {
   document.body.style.fontSize =
     (localStorage.getItem('fontSize') || 14) + 'px';
 
+  // ★ テーマカラー復元
+  const theme = localStorage.getItem('themeColor');
+  if (theme) {
+    document.documentElement.style.setProperty('--theme', theme);
+  }
+
   checkTerms();
   checkPrivacy();
 });
+
 
 if ('Notification' in window) {
   if (Notification.permission === 'default') {
