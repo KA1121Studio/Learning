@@ -190,13 +190,7 @@ window.addEventListener('DOMContentLoaded', () => {
     document.getElementById('namePopup').style.display = 'none';
   };
 
-  document.getElementById('settingsBtn').onclick = () => {
-    const now = localStorage.getItem('userName') || '';
-    const newName = prompt('新しい名前を入力', now);
-    if (!newName) return;
-    localStorage.setItem('userName', newName);
-    document.getElementById('userNameDisplay').textContent = newName;
-  };
+
 
   document.getElementById('addRoomBtn').onclick = showPopup;
   document.getElementById('closePopupBtn').onclick = closePopup;
