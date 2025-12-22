@@ -165,9 +165,12 @@ function appendMessage(author, text, time, image) {
     <div style="font-size:12px; color:#444;">${author}</div>
     ${text ? `<div>${escapeHtml(text)}</div>` : ''}
     ${image ? `<img src="${image}" style="max-width:200px; border-radius:8px; margin-top:6px;">` : ''}
-    <div style="font-size:10px; color:#888;">
-      ${time ? new Date(time).toLocaleTimeString() : ''}
-    </div>
+${localStorage.getItem('showTime') !== 'off' ? `
+  <div style="font-size:10px; color:#888;">
+    ${time ? new Date(time).toLocaleTimeString() : ''}
+  </div>
+` : ''}
+
   `;
 
   const wrapper = document.createElement('div');
