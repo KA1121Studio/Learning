@@ -262,11 +262,15 @@ window.addEventListener('DOMContentLoaded', () => {
 document.getElementById('chatInput').addEventListener('keydown', e => {
   const enterSend = localStorage.getItem('enterSend') !== 'off';
 
-  if (e.key === 'Enter' && enterSend) {
-    e.preventDefault();
-    document.getElementById('sendBtn').click();
+  if (e.key === 'Enter') {
+    if (e.ctrlKey) return; // Ctrl+Enter なら改行する
+    if (enterSend) {
+      e.preventDefault(); // Enterだけなら送信
+      document.getElementById('sendBtn').click();
+    }
   }
 });
+
 
   
   document.getElementById('backBtn').onclick = () => {
