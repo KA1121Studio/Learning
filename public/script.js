@@ -183,7 +183,11 @@ ${localStorage.getItem('showTime') !== 'off' ? `
 
 function escapeHtml(s) {
   if (!s) return '';
-  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return s
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/\n/g,'<br>');  // ← 改行を <br> に変換
 }
 
 // ---------- DOM 初期化 & イベント登録 ----------
