@@ -41,9 +41,13 @@ async function loadNotice() {
   const box = document.getElementById('noticeBox');
   const closeBtn = document.getElementById('closeNoticeBtn');
 
-  if (data?.content) {
-    box.childNodes[box.childNodes.length - 1].textContent = data.content;
-    box.style.display = 'block';
+if (data?.content) {
+  const hidden = localStorage.getItem('noticeHidden') === 'true';
+  if (hidden) return;
+
+  box.childNodes[box.childNodes.length - 1].textContent = data.content;
+  box.style.display = 'block';
+
 
     closeBtn.onclick = () => {
       box.style.display = 'none';
