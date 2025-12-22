@@ -252,13 +252,16 @@ window.addEventListener('DOMContentLoaded', () => {
     selectedImageUrl = null;
   };
 
-  document.getElementById('chatInput').addEventListener('keydown', e => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      document.getElementById('sendBtn').click();
-    }
-  });
+document.getElementById('chatInput').addEventListener('keydown', e => {
+  const enterSend = localStorage.getItem('enterSend') !== 'off';
 
+  if (e.key === 'Enter' && enterSend) {
+    e.preventDefault();
+    document.getElementById('sendBtn').click();
+  }
+});
+
+  
   document.getElementById('backBtn').onclick = () => {
     document.getElementById('chatScreen').style.display = 'none';
     document.getElementById('homeScreen').style.display = 'block';
