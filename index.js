@@ -150,7 +150,7 @@ app.post('/kanri/update-role/:targetId', async (req,res)=>{
 });
 
 
-// -------------------- ルームAPI：ここから Supabase 化 --------------------
+// -------------------- ルームAPI（Supabase） --------------------
 function generateRoomId() {
   return Math.floor(100000 + Math.random() * 900000);
 }
@@ -180,7 +180,6 @@ app.post('/rooms/:id/join', async (req, res) => {
   const roomId = Number(req.params.id);
   const { user } = req.body;
 
-  // すでに参加しているか確認
   const { data: existing } = await supabase
     .from('members')
     .select('id')
@@ -192,7 +191,6 @@ app.post('/rooms/:id/join', async (req, res) => {
     return res.json({ ok: true, alreadyJoined: true });
   }
 
-  // 未参加なら追加
   await supabase.from('members').insert({
     room_id: roomId,
     user
@@ -214,7 +212,6 @@ app.get('/rooms/:roomId/messages', async (req, res) => {
   res.json(data);
 });
 
-// ★ image(URL) を保存するように拡張
 app.post('/rooms/:roomId/messages', async (req, res) => {
   const roomId = Number(req.params.roomId);
 
@@ -223,7 +220,7 @@ app.post('/rooms/:roomId/messages', async (req, res) => {
     room_id: roomId,
     author: req.body.author,
     text: req.body.text,
-    image: req.body.image || null, // ← 追加
+    image: req.body.image || null,
     time: new Date().toISOString()
   };
 
@@ -233,51 +230,79 @@ app.post('/rooms/:roomId/messages', async (req, res) => {
   res.json({ success: true });
 });
 
-app.delete('/rooms/:id', async (req, res) => {
-  const roomId = Number(req.params.id);
-
-  await supabase.from('messages').delete().eq('room_id', roomId);
-  await supabase.from('members').delete().eq('room_id', roomId);
-
-  const { error } = await supabase.from('rooms').delete().eq('id', roomId);
-  if (error) return res.status(500).json({ error });
-
-  res.json({ ok: true });
-});
-
-
-// -------------------- 管理画面 HTML --------------------
-app.get('/kanri', (req,res)=>{
-  const html = `...（省略）...`;
-  res.send(html);
-});
-
 
 // -------------------- Socket.io --------------------
 const http = require('http').createServer(app);
 const { Server } = require('socket.io');
 const io = new Server(http);
 
+// ===== 通話用管理 =====
+const callMembers = {}; // roomId -> [userName]
+// ======================
+
 io.on("connection", (socket) => {
+
   socket.on("joinRoom", (roomId) => {
     socket.join(String(roomId));
   });
 
-  // ★ image(URL) 対応
   socket.on("message", async (data) => {
     const msg = {
       id: Date.now(),
       room_id: Number(data.roomId),
       author: data.author,
       text: data.text,
-      image: data.image || null, // ← 追加
+      image: data.image || null,
       time: new Date().toISOString()
     };
 
     await supabase.from('messages').insert(msg);
-
     io.to(String(data.roomId)).emit("message", msg);
   });
+
+  // ===== 通話イベント =====
+  socket.on('call-join', ({ roomId, user }) => {
+    socket.join(String(roomId));
+    socket.user = user;
+    socket.roomId = roomId;
+
+    callMembers[roomId] ||= [];
+    callMembers[roomId].push(user);
+
+    socket.to(String(roomId)).emit(
+      'call-users',
+      callMembers[roomId].filter(u => u !== user)
+    );
+  });
+
+  socket.on('call-offer', data => {
+    socket.to(data.to).emit('call-offer', {
+      from: socket.user,
+      offer: data.offer
+    });
+  });
+
+  socket.on('call-answer', data => {
+    socket.to(data.to).emit('call-answer', {
+      from: socket.user,
+      answer: data.answer
+    });
+  });
+
+  socket.on('call-ice', data => {
+    socket.to(data.to).emit('call-ice', {
+      from: socket.user,
+      candidate: data.candidate
+    });
+  });
+
+  socket.on('disconnect', () => {
+    const roomId = socket.roomId;
+    const user = socket.user;
+    if (!roomId || !callMembers[roomId]) return;
+    callMembers[roomId] = callMembers[roomId].filter(u => u !== user);
+  });
+  // ======================
 });
 
 app.get('/rooms/:id/members', async (req, res) => {
@@ -323,7 +348,6 @@ app.post('/notice', async (req, res) => {
 
   res.json({ success: true });
 });
-
 
 
 // -------------------- サーバー起動 --------------------
