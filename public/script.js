@@ -5,6 +5,11 @@ const socket = io();
 window.currentRoomId = null;
 let selectedImageUrl = null;
 
+/* ===== 通話用（追加） ===== */
+const peers = {};     // { socketId: RTCPeerConnection }
+let localStream = null;
+/* ======================== */
+
 // ---------- UI ----------
 function showPopup(e) {
   if (e) e.stopPropagation();
@@ -190,7 +195,91 @@ function escapeHtml(s) {
     .replace(/\n/g,'<br>');  // ← 改行を <br> に変換
 }
 
-// ---------- DOM 初期化 & イベント登録 ----------
+/* ============================
+   WebRTC / 複数人通話ロジック
+   ============================ */
+
+async function ensureLocalStream() {
+  if (localStream) return localStream;
+  try {
+    localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    // 画面上に簡単にローカル状態を示す（任意）
+    return localStream;
+  } catch (err) {
+    console.error('マイクが使えない', err);
+    alert('マイクの利用を許可して');
+    throw err;
+  }
+}
+
+function createAudioElementForPeer(peerId) {
+  // 既にあるならそれを返す
+  const existing = document.getElementById('audio_' + peerId);
+  if (existing) return existing;
+
+  const audio = document.createElement('audio');
+  audio.id = 'audio_' + peerId;
+  audio.autoplay = true;
+  audio.controls = false;
+  // chatArea の外に置く（影響少なく）
+  document.body.appendChild(audio);
+  return audio;
+}
+
+async function createPeer(remoteSocketId, isCaller) {
+  if (peers[remoteSocketId]) {
+    // 既にあるなら新規作成しない
+    return peers[remoteSocketId];
+  }
+
+  await ensureLocalStream();
+
+  const pc = new RTCPeerConnection();
+
+  // Add local audio tracks
+  if (localStream) {
+    localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+  }
+
+  // ICE candidate を集めて相手に送る
+  pc.onicecandidate = (event) => {
+    if (event.candidate) {
+      socket.emit('ice-candidate', {
+        to: remoteSocketId,
+        candidate: event.candidate
+      });
+    }
+  };
+
+  // リモートのトラックを受け取る
+  pc.ontrack = (event) => {
+    const stream = event.streams && event.streams[0];
+    if (!stream) return;
+    const audioEl = createAudioElementForPeer(remoteSocketId);
+    audioEl.srcObject = stream;
+  };
+
+  peers[remoteSocketId] = pc;
+
+  if (isCaller) {
+    try {
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      socket.emit('call-offer', {
+        to: remoteSocketId,
+        offer
+      });
+    } catch (err) {
+      console.error('Offer作成失敗', err);
+    }
+  }
+
+  return pc;
+}
+
+/* ============================
+   イベント：DOMContentLoaded 内でボタン等に接続
+   ============================ */
 window.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('saveNameBtn').onclick = () => {
@@ -299,6 +388,49 @@ document.getElementById('chatInput').addEventListener('keydown', e => {
     imagePreview.style.display = 'block';
     selectedImageUrl = url;
   };
+
+  // 通話ボタン（index.html に追加済みが前提）
+  const callBtn = document.getElementById('callBtn');
+  const endCallBtn = document.getElementById('endCallBtn');
+
+  if (callBtn) {
+    callBtn.onclick = async () => {
+      try {
+        await ensureLocalStream();
+        // サーバーから 'room-users' が来て自動接続される想定
+        callBtn.style.display = 'none';
+        if (endCallBtn) endCallBtn.style.display = 'inline';
+      } catch (e) {
+        console.error('通話開始失敗', e);
+      }
+    };
+  }
+
+  if (endCallBtn) {
+    endCallBtn.onclick = () => {
+      // すべての peer を閉じる
+      Object.values(peers).forEach(p => {
+        try { p.close(); } catch (e) {}
+      });
+      Object.keys(peers).forEach(k => delete peers[k]);
+
+      if (localStream) {
+        try {
+          localStream.getTracks().forEach(t => t.stop());
+        } catch (e) {}
+        localStream = null;
+      }
+
+      // audio エレメントを片付ける
+      Object.keys(peers).forEach(id => {
+        const a = document.getElementById('audio_' + id);
+        if (a && a.parentNode) a.parentNode.removeChild(a);
+      });
+
+      if (callBtn) callBtn.style.display = 'inline';
+      endCallBtn.style.display = 'none';
+    };
+  }
 });
 
 // ---------- Socket ----------
@@ -306,6 +438,82 @@ socket.on('message', data => {
   if (String(data.room_id) !== String(window.currentRoomId)) return;
   appendMessage(data.author, data.text, data.time, data.image);
 });
+
+/* ===== Socket.io シグナリング受信処理（追加） ===== */
+
+// サーバーが joinRoom に対して送る「ルーム内の他のソケットIDリスト」
+socket.on('room-users', async (users) => {
+  // users は socket.id の配列を想定
+  if (!users || !Array.isArray(users)) return;
+  try {
+    await ensureLocalStream();
+    users.forEach(userId => {
+      // caller として接続を開始
+      createPeer(userId, true);
+    });
+  } catch (e) {
+    console.error('room-users でのエラー', e);
+  }
+});
+
+// 他からの offer を受け取る
+socket.on('call-offer', async (data) => {
+  try {
+    const from = data.from || data.socketId || data.sender;
+    const offer = data.offer;
+    if (!from || !offer) return;
+
+    await ensureLocalStream();
+    // 受信側は isCaller = false
+    await createPeer(from, false);
+
+    const pc = peers[from];
+    if (!pc) return;
+    await pc.setRemoteDescription(offer);
+
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+
+    socket.emit('call-answer', {
+      to: from,
+      answer
+    });
+  } catch (err) {
+    console.error('call-offer 処理エラー', err);
+  }
+});
+
+// 他からの answer を受け取る
+socket.on('call-answer', async (data) => {
+  try {
+    const from = data.from || data.socketId || data.sender;
+    const answer = data.answer;
+    if (!from || !answer) return;
+
+    const pc = peers[from];
+    if (!pc) return;
+    await pc.setRemoteDescription(answer);
+  } catch (err) {
+    console.error('call-answer 処理エラー', err);
+  }
+});
+
+// ICE candidate を受け取る
+socket.on('ice-candidate', async (data) => {
+  try {
+    const from = data.from || data.socketId || data.sender;
+    const candidate = data.candidate;
+    if (!from || !candidate) return;
+
+    const pc = peers[from];
+    if (!pc) return;
+    await pc.addIceCandidate(new RTCIceCandidate(candidate));
+  } catch (err) {
+    console.error('ice-candidate 処理エラー', err);
+  }
+});
+
+/* ================================================== */
 
 // ---------- ルーム設定 ----------
 let selectedRoomForSettings = null;
