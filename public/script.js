@@ -8,6 +8,8 @@ let selectedImageUrl = null;
 /* ===== 通話用（追加） ===== */
 const peers = {};     // { socketId: RTCPeerConnection }
 let localStream = null;
+let isCalling = false;           // 通話中フラグ
+window.pendingCallUsers = [];    // ルーム内の他ソケットID（通話開始待ち）
 /* ======================== */
 
 // ---------- UI ----------
@@ -46,16 +48,17 @@ async function loadNotice() {
   const box = document.getElementById('noticeBox');
   const closeBtn = document.getElementById('closeNoticeBtn');
 
-if (data?.content) {
-  const hidden = localStorage.getItem('noticeHidden') === 'true';
-  if (hidden) return;
+  if (data?.content) {
+    const hidden = localStorage.getItem('noticeHidden') === 'true';
+    if (hidden) return;
 
-  box.childNodes[box.childNodes.length - 1].textContent = data.content;
-  box.style.display = 'block';
-
+    box.childNodes[box.childNodes.length - 1].textContent = data.content;
+    box.style.display = 'block';
 
     closeBtn.onclick = () => {
       box.style.display = 'none';
+      // ユーザーが閉じたら localStorage に反映する（元の挙動に合わせる）
+      localStorage.setItem('noticeHidden', 'true');
     };
   }
 }
@@ -348,17 +351,17 @@ window.addEventListener('DOMContentLoaded', () => {
     selectedImageUrl = null;
   };
 
-document.getElementById('chatInput').addEventListener('keydown', e => {
-  const enterSend = localStorage.getItem('enterSend') !== 'off';
+  document.getElementById('chatInput').addEventListener('keydown', e => {
+    const enterSend = localStorage.getItem('enterSend') !== 'off';
 
-  if (e.key === 'Enter') {
-    if (e.ctrlKey) return; // Ctrl+Enter なら改行する
-    if (enterSend) {
-      e.preventDefault(); // Enterだけなら送信
-      document.getElementById('sendBtn').click();
+    if (e.key === 'Enter') {
+      if (e.ctrlKey) return; // Ctrl+Enter なら改行する
+      if (enterSend) {
+        e.preventDefault(); // Enterだけなら送信
+        document.getElementById('sendBtn').click();
+      }
     }
-  }
-});
+  });
 
 
   
@@ -367,6 +370,30 @@ document.getElementById('chatInput').addEventListener('keydown', e => {
     document.getElementById('homeScreen').style.display = 'block';
     window.currentRoomId = null;
     document.getElementById('chatArea').innerHTML = '';
+    // ルームから離れるときに通話停止（安全策）
+    if (isCalling) {
+      // mimic endCallBtn behavior
+      isCalling = false;
+
+      Object.values(peers).forEach(p => {
+        try { p.close(); } catch (e) {}
+      });
+      Object.keys(peers).forEach(k => delete peers[k]);
+
+      if (localStream) {
+        try {
+          localStream.getTracks().forEach(t => t.stop());
+        } catch (e) {}
+        localStream = null;
+      }
+
+      document.querySelectorAll('audio[id^="audio_"]').forEach(a => a.remove());
+
+      const callBtnEl = document.getElementById('callBtn');
+      const endCallBtnEl = document.getElementById('endCallBtn');
+      if (callBtnEl) callBtnEl.style.display = 'inline';
+      if (endCallBtnEl) endCallBtnEl.style.display = 'none';
+    }
   };
 
   const mediaBtn = document.getElementById('mediaBtn');
@@ -395,37 +422,52 @@ document.getElementById('chatInput').addEventListener('keydown', e => {
 
   if (callBtn) {
     callBtn.onclick = async () => {
+      if (isCalling) return;
+
       try {
+        isCalling = true;
         await ensureLocalStream();
-        // サーバーから 'room-users' が来て自動接続される想定
+
+        // pendingCallUsers があれば caller として接続を作る
+        (window.pendingCallUsers || []).forEach(userId => {
+          try {
+            createPeer(userId, true);
+          } catch (e) {
+            console.error('peer create error for', userId, e);
+          }
+        });
+
+        // もし後から入室するユーザーがいても socket.on('room-users') 側で isCalling を見て接続するようにしている
         callBtn.style.display = 'none';
         if (endCallBtn) endCallBtn.style.display = 'inline';
       } catch (e) {
         console.error('通話開始失敗', e);
+        isCalling = false;
       }
     };
   }
 
   if (endCallBtn) {
     endCallBtn.onclick = () => {
-      // すべての peer を閉じる
+      isCalling = false;
+
       Object.values(peers).forEach(p => {
         try { p.close(); } catch (e) {}
       });
       Object.keys(peers).forEach(k => delete peers[k]);
 
       if (localStream) {
-        try {
-          localStream.getTracks().forEach(t => t.stop());
-        } catch (e) {}
+        localStream.getTracks().forEach(t => t.stop());
         localStream = null;
       }
 
-      // audio エレメントを片付ける
-      Object.keys(peers).forEach(id => {
-        const a = document.getElementById('audio_' + id);
+      // audio エレメントを片付ける（確実に消す）
+      document.querySelectorAll('audio[id^="audio_"]').forEach(a => {
         if (a && a.parentNode) a.parentNode.removeChild(a);
       });
+
+      // pending をクリア（再度通話するときに再度取得される）
+      window.pendingCallUsers = [];
 
       if (callBtn) callBtn.style.display = 'inline';
       endCallBtn.style.display = 'none';
@@ -442,18 +484,29 @@ socket.on('message', data => {
 /* ===== Socket.io シグナリング受信処理（追加） ===== */
 
 // サーバーが joinRoom に対して送る「ルーム内の他のソケットIDリスト」
-socket.on('room-users', async (users) => {
+socket.on('room-users', (users) => {
   // users は socket.id の配列を想定
   if (!users || !Array.isArray(users)) return;
-  try {
-    await ensureLocalStream();
-    users.forEach(userId => {
-      // caller として接続を開始
-      createPeer(userId, true);
+
+  // 既存 peers を差し引いて未接続のもののみ扱う
+  const unknown = users.filter(id => !peers[id] && id !== socket.id);
+
+  // 通話中なら即接続（caller として）
+  if (isCalling) {
+    unknown.forEach(userId => {
+      try {
+        createPeer(userId, true);
+      } catch (e) {
+        console.error('room-users createPeer error', e);
+      }
     });
-  } catch (e) {
-    console.error('room-users でのエラー', e);
+    // pending は不要にしておく
+    window.pendingCallUsers = users;
+    return;
   }
+
+  // 通話していない場合は接続しないで pending に保存しておく
+  window.pendingCallUsers = users;
 });
 
 // 他からの offer を受け取る
@@ -463,6 +516,7 @@ socket.on('call-offer', async (data) => {
     const offer = data.offer;
     if (!from || !offer) return;
 
+    // 受信側は自動的にローカルストリームを確保して answer する（相手からの呼び出し）
     await ensureLocalStream();
     // 受信側は isCaller = false
     await createPeer(from, false);
