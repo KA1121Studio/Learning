@@ -10,6 +10,10 @@ const peers = {};     // { socketId: RTCPeerConnection }
 let localStream = null;
 let isCalling = false;           // 通話中フラグ
 window.pendingCallUsers = [];    // ルーム内の他ソケットID（通話開始待ち）
+
+// 着信情報
+let incomingCallFrom = null;
+let lastReceivedOffer = null;
 /* ======================== */
 
 // ---------- UI ----------
@@ -394,6 +398,11 @@ window.addEventListener('DOMContentLoaded', () => {
       if (callBtnEl) callBtnEl.style.display = 'inline';
       if (endCallBtnEl) endCallBtnEl.style.display = 'none';
     }
+
+    // 着信情報もクリアしておく
+    incomingCallFrom = null;
+    lastReceivedOffer = null;
+    window.pendingCallUsers = [];
   };
 
   const mediaBtn = document.getElementById('mediaBtn');
@@ -428,16 +437,44 @@ window.addEventListener('DOMContentLoaded', () => {
         isCalling = true;
         await ensureLocalStream();
 
-        // pendingCallUsers があれば caller として接続を作る
+        // 発信（すでにルームにいるユーザーへ）
         (window.pendingCallUsers || []).forEach(userId => {
           try {
+            // 自分自身は skip
+            if (userId === socket.id) return;
             createPeer(userId, true);
           } catch (e) {
             console.error('peer create error for', userId, e);
           }
         });
 
-        // もし後から入室するユーザーがいても socket.on('room-users') 側で isCalling を見て接続するようにしている
+        // 着信があればそれに応答する（最後に受けた offer を使用）
+        if (incomingCallFrom && lastReceivedOffer) {
+          try {
+            const from = incomingCallFrom;
+            // 受信側として Peer を作成（これ内部で ensureLocalStream を呼ぶが既に取得済）
+            await createPeer(from, false);
+
+            const pc = peers[from];
+            if (pc) {
+              await pc.setRemoteDescription(lastReceivedOffer);
+              const answer = await pc.createAnswer();
+              await pc.setLocalDescription(answer);
+
+              socket.emit('call-answer', {
+                to: from,
+                answer
+              });
+            }
+          } catch (e) {
+            console.error('着信への応答に失敗', e);
+          } finally {
+            incomingCallFrom = null;
+            lastReceivedOffer = null;
+          }
+        }
+
+        // UI 切替
         callBtn.style.display = 'none';
         if (endCallBtn) endCallBtn.style.display = 'inline';
       } catch (e) {
@@ -466,8 +503,10 @@ window.addEventListener('DOMContentLoaded', () => {
         if (a && a.parentNode) a.parentNode.removeChild(a);
       });
 
-      // pending をクリア（再度通話するときに再度取得される）
+      // pending と着信情報をクリア（再度通話するときに再度取得される）
       window.pendingCallUsers = [];
+      incomingCallFrom = null;
+      lastReceivedOffer = null;
 
       if (callBtn) callBtn.style.display = 'inline';
       endCallBtn.style.display = 'none';
@@ -495,12 +534,13 @@ socket.on('room-users', (users) => {
   if (isCalling) {
     unknown.forEach(userId => {
       try {
+        if (userId === socket.id) return;
         createPeer(userId, true);
       } catch (e) {
         console.error('room-users createPeer error', e);
       }
     });
-    // pending は不要にしておく
+    // pending は更新しておく
     window.pendingCallUsers = users;
     return;
   }
@@ -516,22 +556,34 @@ socket.on('call-offer', async (data) => {
     const offer = data.offer;
     if (!from || !offer) return;
 
-    // 受信側は自動的にローカルストリームを確保して answer する（相手からの呼び出し）
-    await ensureLocalStream();
-    // 受信側は isCaller = false
-    await createPeer(from, false);
+    // もし自分がすでに通話中なら自動で応答（既にマイク取得済のはず）
+    if (isCalling) {
+      try {
+        await createPeer(from, false);
 
-    const pc = peers[from];
-    if (!pc) return;
-    await pc.setRemoteDescription(offer);
+        const pc = peers[from];
+        if (!pc) return;
+        await pc.setRemoteDescription(offer);
 
-    const answer = await pc.createAnswer();
-    await pc.setLocalDescription(answer);
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
 
-    socket.emit('call-answer', {
-      to: from,
-      answer
-    });
+        socket.emit('call-answer', {
+          to: from,
+          answer
+        });
+      } catch (e) {
+        console.error('自動応答エラー', e);
+      }
+      return;
+    }
+
+    // 通話していない場合は「着信状態」として保存するだけにする（勝手にマイクONしない）
+    incomingCallFrom = from;
+    lastReceivedOffer = offer;
+
+    console.log('着信: ', from);
+    // 必要ならここで UI に「着信中」を表示する実装を追加する
   } catch (err) {
     console.error('call-offer 処理エラー', err);
   }
