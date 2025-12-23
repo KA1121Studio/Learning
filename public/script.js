@@ -8,16 +8,6 @@ let selectedImageUrl = null;
 /* ===== 通話用（追加） ===== */
 const peers = {};     // { socketId: RTCPeerConnection }
 let localStream = null;
-let isCalling = false;           // 通話中フラグ
-window.pendingCallUsers = [];    // ルーム内の他ソケットID（通話開始待ち）
-
-// 着信情報
-let incomingCallFrom = null;
-let lastReceivedOffer = null;
-
-// UI: call popup / state
-let callPopup = null;
-let callState = 'idle'; // 'idle' | 'active' | 'minimized'
 /* ======================== */
 
 // ---------- UI ----------
@@ -56,17 +46,16 @@ async function loadNotice() {
   const box = document.getElementById('noticeBox');
   const closeBtn = document.getElementById('closeNoticeBtn');
 
-  if (data?.content) {
-    const hidden = localStorage.getItem('noticeHidden') === 'true';
-    if (hidden) return;
+if (data?.content) {
+  const hidden = localStorage.getItem('noticeHidden') === 'true';
+  if (hidden) return;
 
-    box.childNodes[box.childNodes.length - 1].textContent = data.content;
-    box.style.display = 'block';
+  box.childNodes[box.childNodes.length - 1].textContent = data.content;
+  box.style.display = 'block';
+
 
     closeBtn.onclick = () => {
       box.style.display = 'none';
-      // ユーザーが閉じたら localStorage に反映する（元の挙動に合わせる）
-      localStorage.setItem('noticeHidden', 'true');
     };
   }
 }
@@ -158,8 +147,6 @@ async function openRoom(roomId) {
   window.currentRoomId = String(room.id);
   socket.emit('joinRoom', String(room.id));
   await loadChat(room.id);
-  // update indicator to ensure consistent UI
-  updateCallIndicator();
 }
 
 // ---------- チャット ----------
@@ -270,22 +257,6 @@ async function createPeer(remoteSocketId, isCaller) {
     if (!stream) return;
     const audioEl = createAudioElementForPeer(remoteSocketId);
     audioEl.srcObject = stream;
-    // update UI member count
-    updateCallMemberCount();
-  };
-
-  // 相手が切断されたときに cleanup する処理を入れる（optional）
-  pc.onconnectionstatechange = () => {
-    if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed' || pc.connectionState === 'closed') {
-      // remove peer if closed
-      if (peers[remoteSocketId]) {
-        try { peers[remoteSocketId].close(); } catch (e) {}
-        delete peers[remoteSocketId];
-      }
-      const a = document.getElementById('audio_' + remoteSocketId);
-      if (a && a.parentNode) a.parentNode.removeChild(a);
-      updateCallMemberCount();
-    }
   };
 
   peers[remoteSocketId] = pc;
@@ -303,196 +274,7 @@ async function createPeer(remoteSocketId, isCaller) {
     }
   }
 
-  // update UI member count
-  updateCallMemberCount();
-
   return pc;
-}
-
-/* ============================
-   Call UI & helper functions
-   ============================ */
-
-function ensureCallPopupExists() {
-  if (callPopup) return;
-
-  // create popup container
-  callPopup = document.createElement('div');
-  callPopup.id = 'callPopup';
-  callPopup.style.position = 'fixed';
-  callPopup.style.left = '50%';
-  callPopup.style.top = '50%';
-  callPopup.style.transform = 'translate(-50%, -50%)';
-  callPopup.style.background = 'white';
-  callPopup.style.border = '1px solid #ccc';
-  callPopup.style.borderRadius = '10px';
-  callPopup.style.padding = '12px';
-  callPopup.style.width = '320px';
-  callPopup.style.zIndex = '10001';
-  callPopup.style.boxShadow = '0 6px 20px rgba(0,0,0,0.15)';
-  callPopup.style.display = 'none';
-
-  // header
-  const header = document.createElement('div');
-  header.style.display = 'flex';
-  header.style.justifyContent = 'space-between';
-  header.style.alignItems = 'center';
-  header.style.marginBottom = '8px';
-
-  const title = document.createElement('div');
-  title.textContent = '通話情報';
-  title.style.fontWeight = 'bold';
-
-  const closeBtn = document.createElement('button');
-  closeBtn.id = 'closeCallPopup';
-  closeBtn.textContent = '✕';
-  closeBtn.style.border = 'none';
-  closeBtn.style.background = 'transparent';
-  closeBtn.style.cursor = 'pointer';
-  closeBtn.style.fontSize = '18px';
-
-  header.appendChild(title);
-  header.appendChild(closeBtn);
-  callPopup.appendChild(header);
-
-  // body
-  const body = document.createElement('div');
-  body.id = 'callPopupBody';
-
-  const status = document.createElement('div');
-  status.id = 'callStatusText';
-  status.textContent = '通話中';
-  status.style.marginBottom = '8px';
-
-  const memberCount = document.createElement('div');
-  memberCount.id = 'callMemberCount';
-  memberCount.textContent = '参加者: 0人';
-  memberCount.style.marginBottom = '12px';
-
-  const endBtn = document.createElement('button');
-  endBtn.id = 'endCallFromPopup';
-  endBtn.textContent = '通話終了';
-  endBtn.className = 'small';
-  endBtn.style.width = '100%';
-  endBtn.style.padding = '8px';
-  endBtn.style.borderRadius = '6px';
-  endBtn.style.border = 'none';
-  endBtn.style.background = '#ff4b4b';
-  endBtn.style.color = 'white';
-  endBtn.style.cursor = 'pointer';
-
-  body.appendChild(status);
-  body.appendChild(memberCount);
-  body.appendChild(endBtn);
-
-  callPopup.appendChild(body);
-
-  document.body.appendChild(callPopup);
-
-  // events
-  closeBtn.onclick = () => {
-    // close popup but keep call running
-    callPopup.style.display = 'none';
-    callState = isCalling ? 'minimized' : 'idle';
-    updateCallIndicator(true);
-  };
-
-  endBtn.onclick = () => {
-    // end call from popup
-    endCall();
-    callPopup.style.display = 'none';
-    callState = 'idle';
-    updateCallIndicator(false);
-  };
-}
-
-function showCallPopup() {
-  ensureCallPopupExists();
-  callPopup.style.display = 'block';
-  callState = 'active';
-  updateCallIndicator(true);
-  updateCallMemberCount();
-}
-
-function updateCallMemberCount() {
-  ensureCallPopupExists();
-  const el = document.getElementById('callMemberCount');
-  if (!el) return;
-  // participants: peers + self (if calling)
-  const peerCount = Object.keys(peers).length;
-  const selfCount = isCalling ? 1 : 0;
-  el.textContent = '参加者: ' + (peerCount + selfCount) + '人';
-}
-
-function updateCallIndicator(showIfMinimized) {
-  const roomInfoEl = document.getElementById('roomInfo');
-  if (!roomInfoEl) return;
-  const originalText = roomInfoEl.textContent || roomInfoEl.innerText || '';
-
-  // remove existing indicator span if any
-  const existing = document.getElementById('callIndicator');
-  if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
-
-  if (isCalling) {
-    // create small indicator
-    const span = document.createElement('span');
-    span.id = 'callIndicator';
-    span.style.display = 'inline-block';
-    span.style.marginRight = '8px';
-    span.style.padding = '2px 6px';
-    span.style.borderRadius = '12px';
-    span.style.background = '#4caf50';
-    span.style.color = 'white';
-    span.style.fontSize = '12px';
-    span.style.fontWeight = 'bold';
-    span.textContent = '通話中';
-    // show indicator to left of text
-    // replace roomInfo content with indicator + original text (without duplicating)
-    roomInfoEl.innerHTML = '';
-    roomInfoEl.appendChild(span);
-    const textNode = document.createTextNode(' ' + originalText.replace(/^通話中\s*/, ''));
-    roomInfoEl.appendChild(textNode);
-  } else {
-    // not calling: restore original text (remove indicator)
-    roomInfoEl.textContent = originalText.replace(/^通話中\s*/, '');
-  }
-}
-
-// encapsulated endCall logic
-function endCall() {
-  isCalling = false;
-  callState = 'idle';
-
-  Object.values(peers).forEach(p => {
-    try { p.close(); } catch (e) {}
-  });
-  Object.keys(peers).forEach(k => delete peers[k]);
-
-  if (localStream) {
-    try {
-      localStream.getTracks().forEach(t => t.stop());
-    } catch (e) {}
-    localStream = null;
-  }
-
-  // remove audio elements
-  document.querySelectorAll('audio[id^="audio_"]').forEach(a => {
-    if (a && a.parentNode) a.parentNode.removeChild(a);
-  });
-
-  // clear pending/ incoming
-  window.pendingCallUsers = [];
-  incomingCallFrom = null;
-  lastReceivedOffer = null;
-
-  // UI
-  const callBtnEl = document.getElementById('callBtn');
-  const endCallBtnEl = document.getElementById('endCallBtn');
-  if (callBtnEl) callBtnEl.style.display = 'inline';
-  if (endCallBtnEl) endCallBtnEl.style.display = 'none';
-
-  updateCallIndicator(false);
-  if (callPopup) callPopup.style.display = 'none';
 }
 
 /* ============================
@@ -566,17 +348,17 @@ window.addEventListener('DOMContentLoaded', () => {
     selectedImageUrl = null;
   };
 
-  document.getElementById('chatInput').addEventListener('keydown', e => {
-    const enterSend = localStorage.getItem('enterSend') !== 'off';
+document.getElementById('chatInput').addEventListener('keydown', e => {
+  const enterSend = localStorage.getItem('enterSend') !== 'off';
 
-    if (e.key === 'Enter') {
-      if (e.ctrlKey) return; // Ctrl+Enter なら改行する
-      if (enterSend) {
-        e.preventDefault(); // Enterだけなら送信
-        document.getElementById('sendBtn').click();
-      }
+  if (e.key === 'Enter') {
+    if (e.ctrlKey) return; // Ctrl+Enter なら改行する
+    if (enterSend) {
+      e.preventDefault(); // Enterだけなら送信
+      document.getElementById('sendBtn').click();
     }
-  });
+  }
+});
 
 
   
@@ -585,15 +367,6 @@ window.addEventListener('DOMContentLoaded', () => {
     document.getElementById('homeScreen').style.display = 'block';
     window.currentRoomId = null;
     document.getElementById('chatArea').innerHTML = '';
-    // ルームから離れるときに通話停止（安全策）
-    if (isCalling) {
-      endCall();
-    }
-
-    // 着信情報もクリアしておく
-    incomingCallFrom = null;
-    lastReceivedOffer = null;
-    window.pendingCallUsers = [];
   };
 
   const mediaBtn = document.getElementById('mediaBtn');
@@ -622,72 +395,40 @@ window.addEventListener('DOMContentLoaded', () => {
 
   if (callBtn) {
     callBtn.onclick = async () => {
-      // If we're minimized, reopen popup
-      if (isCalling && callState === 'minimized') {
-        showCallPopup();
-        return;
-      }
-
-      if (isCalling) return; // already active
-
       try {
-        // start call (発信 or 応答)
-        isCalling = true;
         await ensureLocalStream();
-
-        // 発信（すでにルームにいるユーザーへ）
-        (window.pendingCallUsers || []).forEach(userId => {
-          try {
-            // 自分自身は skip
-            if (userId === socket.id) return;
-            createPeer(userId, true);
-          } catch (e) {
-            console.error('peer create error for', userId, e);
-          }
-        });
-
-        // 着信があればそれに応答する（最後に受けた offer を使用）
-        if (incomingCallFrom && lastReceivedOffer) {
-          try {
-            const from = incomingCallFrom;
-            // 受信側として Peer を作成（これ内部で ensureLocalStream を呼ぶが既に取得済）
-            await createPeer(from, false);
-
-            const pc = peers[from];
-            if (pc) {
-              await pc.setRemoteDescription(lastReceivedOffer);
-              const answer = await pc.createAnswer();
-              await pc.setLocalDescription(answer);
-
-              socket.emit('call-answer', {
-                to: from,
-                answer
-              });
-            }
-          } catch (e) {
-            console.error('着信への応答に失敗', e);
-          } finally {
-            incomingCallFrom = null;
-            lastReceivedOffer = null;
-          }
-        }
-
-        // UI 切替
+        // サーバーから 'room-users' が来て自動接続される想定
         callBtn.style.display = 'none';
         if (endCallBtn) endCallBtn.style.display = 'inline';
-
-        // show popup
-        showCallPopup();
       } catch (e) {
         console.error('通話開始失敗', e);
-        isCalling = false;
       }
     };
   }
 
   if (endCallBtn) {
     endCallBtn.onclick = () => {
-      endCall();
+      // すべての peer を閉じる
+      Object.values(peers).forEach(p => {
+        try { p.close(); } catch (e) {}
+      });
+      Object.keys(peers).forEach(k => delete peers[k]);
+
+      if (localStream) {
+        try {
+          localStream.getTracks().forEach(t => t.stop());
+        } catch (e) {}
+        localStream = null;
+      }
+
+      // audio エレメントを片付ける
+      Object.keys(peers).forEach(id => {
+        const a = document.getElementById('audio_' + id);
+        if (a && a.parentNode) a.parentNode.removeChild(a);
+      });
+
+      if (callBtn) callBtn.style.display = 'inline';
+      endCallBtn.style.display = 'none';
     };
   }
 });
@@ -701,32 +442,18 @@ socket.on('message', data => {
 /* ===== Socket.io シグナリング受信処理（追加） ===== */
 
 // サーバーが joinRoom に対して送る「ルーム内の他のソケットIDリスト」
-socket.on('room-users', (users) => {
+socket.on('room-users', async (users) => {
   // users は socket.id の配列を想定
   if (!users || !Array.isArray(users)) return;
-
-  // 既存 peers を差し引いて未接続のもののみ扱う
-  const unknown = users.filter(id => !peers[id] && id !== socket.id);
-
-  // 通話中なら即接続（caller として）
-  if (isCalling) {
-    unknown.forEach(userId => {
-      try {
-        if (userId === socket.id) return;
-        createPeer(userId, true);
-      } catch (e) {
-        console.error('room-users createPeer error', e);
-      }
+  try {
+    await ensureLocalStream();
+    users.forEach(userId => {
+      // caller として接続を開始
+      createPeer(userId, true);
     });
-    // pending は更新しておく
-    window.pendingCallUsers = users;
-    updateCallMemberCount();
-    return;
+  } catch (e) {
+    console.error('room-users でのエラー', e);
   }
-
-  // 通話していない場合は接続しないで pending に保存しておく
-  window.pendingCallUsers = users;
-  updateCallMemberCount();
 });
 
 // 他からの offer を受け取る
@@ -736,35 +463,21 @@ socket.on('call-offer', async (data) => {
     const offer = data.offer;
     if (!from || !offer) return;
 
-    // もし自分がすでに通話中なら自動で応答（既にマイク取得済のはず）
-    if (isCalling) {
-      try {
-        await createPeer(from, false);
+    await ensureLocalStream();
+    // 受信側は isCaller = false
+    await createPeer(from, false);
 
-        const pc = peers[from];
-        if (!pc) return;
-        await pc.setRemoteDescription(offer);
+    const pc = peers[from];
+    if (!pc) return;
+    await pc.setRemoteDescription(offer);
 
-        const answer = await pc.createAnswer();
-        await pc.setLocalDescription(answer);
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
 
-        socket.emit('call-answer', {
-          to: from,
-          answer
-        });
-      } catch (e) {
-        console.error('自動応答エラー', e);
-      }
-      return;
-    }
-
-    // 通話していない場合は「着信状態」として保存するだけにする（勝手にマイクONしない）
-    incomingCallFrom = from;
-    lastReceivedOffer = offer;
-
-    console.log('着信: ', from);
-    // 必要ならここで UI に「着信中」を表示する実装を追加する
-    // 例: show small badge or flash on call button - optional
+    socket.emit('call-answer', {
+      to: from,
+      answer
+    });
   } catch (err) {
     console.error('call-offer 処理エラー', err);
   }
