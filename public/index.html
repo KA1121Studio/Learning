@@ -402,7 +402,7 @@ background:rgba(0,0,0,0.6); justify-content:center; align-items:center; z-index:
 
 第9条（プライバシーポリシーの変更）<br>
 本サービスは、本ポリシーを随時変更できるものとする。
-変更後の内容は本サービス上に掲載した時点で効力を生じる。
+変更後の内容は本ポリシーを随時変更できるものとする。
 
 <br><br>
 
@@ -468,7 +468,13 @@ background:rgba(0,0,0,0.6); justify-content:center; align-items:center; z-index:
         <button id="backBtn" class="small">← 戻る</button>
         <h3 id="roomTitle" style="margin:0;"></h3>
       </div>
-      <div id="roomInfo"></div>
+
+      <div style="display:flex; gap:6px; align-items:center;">
+        <button id="callBtn" class="small">📞 通話開始</button>
+        <button id="endCallBtn" class="small" style="display:none;">❌ 通話終了</button>
+        <span id="callStatus" style="font-size:12px; color:#e53935; display:none; margin-left:6px;">🔴 通話中</span>
+        <div id="roomInfo"></div>
+      </div>
     </div>
 
     <div id="chatArea"></div>
