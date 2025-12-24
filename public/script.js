@@ -8,6 +8,12 @@ let selectedImageUrl = null;
 /* ===== 通話用（追加） ===== */
 const peers = {};     // { socketId: RTCPeerConnection }
 let localStream = null;
+let isCalling = false;           // 通話中フラグ
+window.pendingCallUsers = [];    // ルーム内の他ソケットID（通話開始待ち）
+
+// 着信情報
+let incomingCallFrom = null;
+let lastReceivedOffer = null;
 /* ======================== */
 
 // ---------- UI ----------
@@ -46,16 +52,17 @@ async function loadNotice() {
   const box = document.getElementById('noticeBox');
   const closeBtn = document.getElementById('closeNoticeBtn');
 
-if (data?.content) {
-  const hidden = localStorage.getItem('noticeHidden') === 'true';
-  if (hidden) return;
+  if (data?.content) {
+    const hidden = localStorage.getItem('noticeHidden') === 'true';
+    if (hidden) return;
 
-  box.childNodes[box.childNodes.length - 1].textContent = data.content;
-  box.style.display = 'block';
-
+    box.childNodes[box.childNodes.length - 1].textContent = data.content;
+    box.style.display = 'block';
 
     closeBtn.onclick = () => {
       box.style.display = 'none';
+      // ユーザーが閉じたら localStorage に反映する（元の挙動に合わせる）
+      localStorage.setItem('noticeHidden', 'true');
     };
   }
 }
@@ -348,17 +355,17 @@ window.addEventListener('DOMContentLoaded', () => {
     selectedImageUrl = null;
   };
 
-document.getElementById('chatInput').addEventListener('keydown', e => {
-  const enterSend = localStorage.getItem('enterSend') !== 'off';
+  document.getElementById('chatInput').addEventListener('keydown', e => {
+    const enterSend = localStorage.getItem('enterSend') !== 'off';
 
-  if (e.key === 'Enter') {
-    if (e.ctrlKey) return; // Ctrl+Enter なら改行する
-    if (enterSend) {
-      e.preventDefault(); // Enterだけなら送信
-      document.getElementById('sendBtn').click();
+    if (e.key === 'Enter') {
+      if (e.ctrlKey) return; // Ctrl+Enter なら改行する
+      if (enterSend) {
+        e.preventDefault(); // Enterだけなら送信
+        document.getElementById('sendBtn').click();
+      }
     }
-  }
-});
+  });
 
 
   
@@ -367,6 +374,35 @@ document.getElementById('chatInput').addEventListener('keydown', e => {
     document.getElementById('homeScreen').style.display = 'block';
     window.currentRoomId = null;
     document.getElementById('chatArea').innerHTML = '';
+    // ルームから離れるときに通話停止（安全策）
+    if (isCalling) {
+      // mimic endCallBtn behavior
+      isCalling = false;
+
+      Object.values(peers).forEach(p => {
+        try { p.close(); } catch (e) {}
+      });
+      Object.keys(peers).forEach(k => delete peers[k]);
+
+      if (localStream) {
+        try {
+          localStream.getTracks().forEach(t => t.stop());
+        } catch (e) {}
+        localStream = null;
+      }
+
+      document.querySelectorAll('audio[id^="audio_"]').forEach(a => a.remove());
+
+      const callBtnEl = document.getElementById('callBtn');
+      const endCallBtnEl = document.getElementById('endCallBtn');
+      if (callBtnEl) callBtnEl.style.display = 'inline';
+      if (endCallBtnEl) endCallBtnEl.style.display = 'none';
+    }
+
+    // 着信情報もクリアしておく
+    incomingCallFrom = null;
+    lastReceivedOffer = null;
+    window.pendingCallUsers = [];
   };
 
   const mediaBtn = document.getElementById('mediaBtn');
@@ -395,37 +431,82 @@ document.getElementById('chatInput').addEventListener('keydown', e => {
 
   if (callBtn) {
     callBtn.onclick = async () => {
+      if (isCalling) return;
+
       try {
+        isCalling = true;
         await ensureLocalStream();
-        // サーバーから 'room-users' が来て自動接続される想定
+
+        // 発信（すでにルームにいるユーザーへ）
+        (window.pendingCallUsers || []).forEach(userId => {
+          try {
+            // 自分自身は skip
+            if (userId === socket.id) return;
+            createPeer(userId, true);
+          } catch (e) {
+            console.error('peer create error for', userId, e);
+          }
+        });
+
+        // 着信があればそれに応答する（最後に受けた offer を使用）
+        if (incomingCallFrom && lastReceivedOffer) {
+          try {
+            const from = incomingCallFrom;
+            // 受信側として Peer を作成（これ内部で ensureLocalStream を呼ぶが既に取得済）
+            await createPeer(from, false);
+
+            const pc = peers[from];
+            if (pc) {
+              await pc.setRemoteDescription(lastReceivedOffer);
+              const answer = await pc.createAnswer();
+              await pc.setLocalDescription(answer);
+
+              socket.emit('call-answer', {
+                to: from,
+                answer
+              });
+            }
+          } catch (e) {
+            console.error('着信への応答に失敗', e);
+          } finally {
+            incomingCallFrom = null;
+            lastReceivedOffer = null;
+          }
+        }
+
+        // UI 切替
         callBtn.style.display = 'none';
         if (endCallBtn) endCallBtn.style.display = 'inline';
       } catch (e) {
         console.error('通話開始失敗', e);
+        isCalling = false;
       }
     };
   }
 
   if (endCallBtn) {
     endCallBtn.onclick = () => {
-      // すべての peer を閉じる
+      isCalling = false;
+
       Object.values(peers).forEach(p => {
         try { p.close(); } catch (e) {}
       });
       Object.keys(peers).forEach(k => delete peers[k]);
 
       if (localStream) {
-        try {
-          localStream.getTracks().forEach(t => t.stop());
-        } catch (e) {}
+        localStream.getTracks().forEach(t => t.stop());
         localStream = null;
       }
 
-      // audio エレメントを片付ける
-      Object.keys(peers).forEach(id => {
-        const a = document.getElementById('audio_' + id);
+      // audio エレメントを片付ける（確実に消す）
+      document.querySelectorAll('audio[id^="audio_"]').forEach(a => {
         if (a && a.parentNode) a.parentNode.removeChild(a);
       });
+
+      // pending と着信情報をクリア（再度通話するときに再度取得される）
+      window.pendingCallUsers = [];
+      incomingCallFrom = null;
+      lastReceivedOffer = null;
 
       if (callBtn) callBtn.style.display = 'inline';
       endCallBtn.style.display = 'none';
@@ -442,18 +523,30 @@ socket.on('message', data => {
 /* ===== Socket.io シグナリング受信処理（追加） ===== */
 
 // サーバーが joinRoom に対して送る「ルーム内の他のソケットIDリスト」
-socket.on('room-users', async (users) => {
+socket.on('room-users', (users) => {
   // users は socket.id の配列を想定
   if (!users || !Array.isArray(users)) return;
-  try {
-    await ensureLocalStream();
-    users.forEach(userId => {
-      // caller として接続を開始
-      createPeer(userId, true);
+
+  // 既存 peers を差し引いて未接続のもののみ扱う
+  const unknown = users.filter(id => !peers[id] && id !== socket.id);
+
+  // 通話中なら即接続（caller として）
+  if (isCalling) {
+    unknown.forEach(userId => {
+      try {
+        if (userId === socket.id) return;
+        createPeer(userId, true);
+      } catch (e) {
+        console.error('room-users createPeer error', e);
+      }
     });
-  } catch (e) {
-    console.error('room-users でのエラー', e);
+    // pending は更新しておく
+    window.pendingCallUsers = users;
+    return;
   }
+
+  // 通話していない場合は接続しないで pending に保存しておく
+  window.pendingCallUsers = users;
 });
 
 // 他からの offer を受け取る
@@ -463,21 +556,34 @@ socket.on('call-offer', async (data) => {
     const offer = data.offer;
     if (!from || !offer) return;
 
-    await ensureLocalStream();
-    // 受信側は isCaller = false
-    await createPeer(from, false);
+    // もし自分がすでに通話中なら自動で応答（既にマイク取得済のはず）
+    if (isCalling) {
+      try {
+        await createPeer(from, false);
 
-    const pc = peers[from];
-    if (!pc) return;
-    await pc.setRemoteDescription(offer);
+        const pc = peers[from];
+        if (!pc) return;
+        await pc.setRemoteDescription(offer);
 
-    const answer = await pc.createAnswer();
-    await pc.setLocalDescription(answer);
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
 
-    socket.emit('call-answer', {
-      to: from,
-      answer
-    });
+        socket.emit('call-answer', {
+          to: from,
+          answer
+        });
+      } catch (e) {
+        console.error('自動応答エラー', e);
+      }
+      return;
+    }
+
+    // 通話していない場合は「着信状態」として保存するだけにする（勝手にマイクONしない）
+    incomingCallFrom = from;
+    lastReceivedOffer = offer;
+
+    console.log('着信: ', from);
+    // 必要ならここで UI に「着信中」を表示する実装を追加する
   } catch (err) {
     console.error('call-offer 処理エラー', err);
   }
