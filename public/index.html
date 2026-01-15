@@ -460,6 +460,58 @@ background:rgba(0,0,0,0.6); justify-content:center; align-items:center; z-index:
     <div id="roomCodeDisplay" style="display:none; margin-top:10px; font-size:15px;"></div>
 
   </div>
+<!-- ===== 新しい通話画面 ===== -->
+<div id="callScreen" style="
+  display:none;
+  height:100vh;
+  padding:16px;
+  background:#f5f5f5;
+">
+
+  <div style="display:flex; justify-content:space-between; align-items:center;">
+    <h3 id="callRoomTitle" style="margin:0;">通話中のルーム</h3>
+    <button id="backFromCallBtn" class="small">← 戻る</button>
+  </div>
+
+  <div style="
+    margin-top:20px;
+    background:white;
+    padding:16px;
+    border-radius:12px;
+    box-shadow:0 0 5px rgba(0,0,0,.1);
+  ">
+    <h4>参加メンバー</h4>
+    <ul id="callMembersList"></ul>
+  </div>
+
+  <div style="
+    margin-top:20px;
+    text-align:center;
+  ">
+    <div id="callStatusText" style="margin-bottom:12px;">待機中…</div>
+
+    <button id="startCallBtn" style="
+      padding:10px 20px;
+      background:#4CAF50;
+      color:white;
+      border:none;
+      border-radius:20px;
+    ">
+      通話開始
+    </button>
+
+    <button id="stopCallBtn" style="
+      display:none;
+      padding:10px 20px;
+      background:#ff4b4b;
+      color:white;
+      border:none;
+      border-radius:20px;
+    ">
+      通話終了
+    </button>
+  </div>
+</div>
 
   <!-- チャット画面 -->
   <div id="chatScreen" style="padding:16px;">
