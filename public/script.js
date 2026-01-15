@@ -425,112 +425,78 @@ window.addEventListener('DOMContentLoaded', () => {
     selectedImageUrl = url;
   };
 
-  // 通話ボタン（index.html に追加済みが前提）
-  const callBtn = document.getElementById('callBtn');
-callBtn.onclick = () => {
+const callBtn = document.getElementById('callBtn');
+const endCallBtn = document.getElementById('endCallBtn');
+
+callBtn.onclick = async () => {
+
+  // ===== まず画面を通話画面に切り替え =====
   document.getElementById('chatScreen').style.display = 'none';
   document.getElementById('callScreen').style.display = 'block';
 
-  // ルーム名を反映
   document.getElementById('callRoomTitle').textContent =
     document.getElementById('roomTitle').textContent;
 
-  // メンバーを表示
+  // メンバー表示
   fetch('/rooms/' + window.currentRoomId + '/members')
     .then(r => r.json())
     .then(members => {
       const ul = document.getElementById('callMembersList');
       ul.innerHTML = members.map(m => `<li>${m.user}</li>`).join('');
     });
+
+  // ===== ここから“本物の通話開始処理” =====
+  if (isCalling) return;
+
+  try {
+    isCalling = true;
+    await ensureLocalStream();
+
+    (window.pendingCallUsers || []).forEach(userId => {
+      if (userId !== socket.id) {
+        createPeer(userId, true);
+      }
+    });
+
+    // ボタン表示切替
+    callBtn.style.display = 'none';
+    if (endCallBtn) endCallBtn.style.display = 'inline';
+
+  } catch (e) {
+    console.error('通話開始失敗', e);
+    isCalling = false;
+  }
 };
 
-  
-  const endCallBtn = document.getElementById('endCallBtn');
+if (endCallBtn) {
+  endCallBtn.onclick = () => {
+    isCalling = false;
 
-  if (callBtn) {
-    callBtn.onclick = async () => {
-      if (isCalling) return;
+    Object.values(peers).forEach(p => {
+      try { p.close(); } catch (e) {}
+    });
+    Object.keys(peers).forEach(k => delete peers[k]);
 
-      try {
-        isCalling = true;
-        await ensureLocalStream();
+    if (localStream) {
+      localStream.getTracks().forEach(t => t.stop());
+      localStream = null;
+    }
 
-        // 発信（すでにルームにいるユーザーへ）
-        (window.pendingCallUsers || []).forEach(userId => {
-          try {
-            // 自分自身は skip
-            if (userId === socket.id) return;
-            createPeer(userId, true);
-          } catch (e) {
-            console.error('peer create error for', userId, e);
-          }
-        });
+    document.querySelectorAll('audio[id^="audio_"]').forEach(a => {
+      if (a && a.parentNode) a.parentNode.removeChild(a);
+    });
 
-        // 着信があればそれに応答する（最後に受けた offer を使用）
-        if (incomingCallFrom && lastReceivedOffer) {
-          try {
-            const from = incomingCallFrom;
-            // 受信側として Peer を作成（これ内部で ensureLocalStream を呼ぶが既に取得済）
-            await createPeer(from, false);
+    window.pendingCallUsers = [];
+    incomingCallFrom = null;
+    lastReceivedOffer = null;
 
-            const pc = peers[from];
-            if (pc) {
-              await pc.setRemoteDescription(lastReceivedOffer);
-              const answer = await pc.createAnswer();
-              await pc.setLocalDescription(answer);
+    if (callBtn) callBtn.style.display = 'inline';
+    endCallBtn.style.display = 'none';
 
-              socket.emit('call-answer', {
-                to: from,
-                answer
-              });
-            }
-          } catch (e) {
-            console.error('着信への応答に失敗', e);
-          } finally {
-            incomingCallFrom = null;
-            lastReceivedOffer = null;
-          }
-        }
-
-        // UI 切替
-        callBtn.style.display = 'none';
-        if (endCallBtn) endCallBtn.style.display = 'inline';
-      } catch (e) {
-        console.error('通話開始失敗', e);
-        isCalling = false;
-      }
-    };
-  }
-
-  if (endCallBtn) {
-    endCallBtn.onclick = () => {
-      isCalling = false;
-
-      Object.values(peers).forEach(p => {
-        try { p.close(); } catch (e) {}
-      });
-      Object.keys(peers).forEach(k => delete peers[k]);
-
-      if (localStream) {
-        localStream.getTracks().forEach(t => t.stop());
-        localStream = null;
-      }
-
-      // audio エレメントを片付ける（確実に消す）
-      document.querySelectorAll('audio[id^="audio_"]').forEach(a => {
-        if (a && a.parentNode) a.parentNode.removeChild(a);
-      });
-
-      // pending と着信情報をクリア（再度通話するときに再度取得される）
-      window.pendingCallUsers = [];
-      incomingCallFrom = null;
-      lastReceivedOffer = null;
-
-      if (callBtn) callBtn.style.display = 'inline';
-      endCallBtn.style.display = 'none';
-    };
-  }
-});
+    document.getElementById('callScreen').style.display = 'none';
+    document.getElementById('chatScreen').style.display = 'block';
+  };
+}
 
 // ---------- Socket ----------
 socket.on('message', data => {
