@@ -427,6 +427,24 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // 通話ボタン（index.html に追加済みが前提）
   const callBtn = document.getElementById('callBtn');
+callBtn.onclick = () => {
+  document.getElementById('chatScreen').style.display = 'none';
+  document.getElementById('callScreen').style.display = 'block';
+
+  // ルーム名を反映
+  document.getElementById('callRoomTitle').textContent =
+    document.getElementById('roomTitle').textContent;
+
+  // メンバーを表示
+  fetch('/rooms/' + window.currentRoomId + '/members')
+    .then(r => r.json())
+    .then(members => {
+      const ul = document.getElementById('callMembersList');
+      ul.innerHTML = members.map(m => `<li>${m.user}</li>`).join('');
+    });
+};
+
+  
   const endCallBtn = document.getElementById('endCallBtn');
 
   if (callBtn) {
@@ -783,3 +801,40 @@ if ('Notification' in window) {
     Notification.requestPermission();
   }
 }
+
+
+document.getElementById('startCallBtn').onclick = async () => {
+  document.getElementById('callStatusText').textContent = '通話中…';
+  document.getElementById('startCallBtn').style.display = 'none';
+  document.getElementById('stopCallBtn').style.display = 'inline';
+
+  // ★ ここで“本物の通話開始”を呼ぶ
+  await ensureLocalStream();
+
+  (window.pendingCallUsers || []).forEach(userId => {
+    if (userId !== socket.id) {
+      createPeer(userId, true);
+    }
+  });
+
+  isCalling = true;
+};
+
+
+document.getElementById('stopCallBtn').onclick = () => {
+  isCalling = false;
+
+  Object.values(peers).forEach(p => p.close());
+  Object.keys(peers).forEach(k => delete peers[k]);
+
+  if (localStream) {
+    localStream.getTracks().forEach(t => t.stop());
+    localStream = null;
+  }
+
+  document.querySelectorAll('audio[id^="audio_"]').forEach(a => a.remove());
+
+  // 画面を戻す
+  document.getElementById('callScreen').style.display = 'none';
+  document.getElementById('chatScreen').style.display = 'block';
+};
