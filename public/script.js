@@ -498,6 +498,9 @@ if (endCallBtn) {
   };
 }
 
+});
+
+
 // ---------- Socket ----------
 socket.on('message', data => {
   if (String(data.room_id) !== String(window.currentRoomId)) return;
