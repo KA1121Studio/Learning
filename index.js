@@ -304,6 +304,15 @@ io.on("connection", (socket) => {
   });
 });
 
+socket.on("ask-room-users", (roomId) => {
+  const clients = Array.from(
+    io.sockets.adapter.rooms.get(String(roomId)) || []
+  );
+
+  io.to(String(roomId)).emit("room-users", clients);
+});
+            
+
 
 // -------------------- その他 API --------------------
 app.get('/rooms/:id/members', async (req, res) => {
