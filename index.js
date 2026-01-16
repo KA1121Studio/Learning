@@ -267,10 +267,11 @@ io.on("connection", (socket) => {
       io.sockets.adapter.rooms.get(String(roomId)) || []
     );
 
-    socket.emit(
-      "room-users",
-      clients.filter(id => id !== socket.id)
-    );
+io.to(roomId).emit(
+  "room-users",
+  clients
+);
+
   });
 
   // チャットメッセージ
