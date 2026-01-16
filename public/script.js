@@ -777,16 +777,11 @@ document.getElementById('startCallBtn').onclick = async () => {
   document.getElementById('startCallBtn').style.display = 'none';
   document.getElementById('stopCallBtn').style.display = 'inline';
 
-  // ★ ここで“本物の通話開始”を呼ぶ
+  isCalling = true;        // ★ 先にON
   await ensureLocalStream();
 
-  (window.pendingCallUsers || []).forEach(userId => {
-    if (userId !== socket.id) {
-      createPeer(userId, true);
-    }
-  });
-
-  isCalling = true;
+  // ★「いまいる人」に必ずかけ直す（超重要）
+  socket.emit('ask-room-users', window.currentRoomId);
 };
 
 
