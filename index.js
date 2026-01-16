@@ -250,6 +250,15 @@ const io = new Server(http);
 
 io.on("connection", (socket) => {
 
+  socket.on("ask-room-users", (roomId) => {
+  const clients = Array.from(
+    io.sockets.adapter.rooms.get(String(roomId)) || []
+  );
+
+  io.to(String(roomId)).emit("room-users", clients);
+});
+
+
   // ★ ルーム参加（通話用に room-users を返す）
   socket.on("joinRoom", (roomId) => {
     socket.join(String(roomId));
